@@ -1,0 +1,26 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Secrets and local runtime data (never commit)
+certs/
+server/data/
+*.env
+.env*
+*.key
+*.pem
+*.pfx
+*.db
+*.db-wal
+*.db-shm
+*.sqlite*
+
+# Tool caches
+.impeccable/hook.cache.json
+
+# OS / editor
+Thumbs.db
+desktop.ini
+.vscode/
