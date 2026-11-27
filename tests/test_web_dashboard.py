@@ -1,7 +1,10 @@
 """Tests for Web Dashboard HTML routes and session flows."""
 import os
+import re
+from io import BytesIO
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from sqlalchemy.orm import sessionmaker
 
@@ -67,6 +70,91 @@ def test_login_page_renders(web_test_client):
     assert "csrf_token" in resp.text
 
 
+def test_register_and_save_account_profile(web_test_client):
+    client = web_test_client
+    client.cookies.clear()
+    client.get("/register")
+    form = {
+        "email": "New-Parent@example.com",
+        "password": "DemoParent123!",
+        "password_confirmation": "DemoParent123!",
+        "display_name": "Ngân Trần",
+        "csrf_token": client.cookies.get(CSRF_COOKIE_NAME),
+    }
+    created = client.post("/register", data=form, follow_redirects=False)
+    assert created.status_code == 303
+    assert created.headers["location"] == "/login?registered=1"
+    form["email"] = form["email"].lower()
+    assert "Email này đã có tài khoản" in client.post("/register", data=form).text
+
+    login = client.post("/login", data=_login_form(client, form["email"], form["password"]), follow_redirects=False)
+    assert login.status_code == 302
+    profile = client.get("/account")
+    assert 'value="Ngân Trần"' in profile.text
+    token = re.search(r'name="csrf_token" value="([^"]+)"', profile.text).group(1)
+    updated = {"display_name": "Bình An", "avatar_color": "plum", "csrf_token": token}
+    assert client.post("/account", data={**updated, "csrf_token": "invalid"}).status_code == 200
+    assert 'value="Ngân Trần"' in client.get("/account").text
+    assert client.post("/account", data=updated, follow_redirects=False).status_code == 303
+
+    client.cookies.clear()
+    client.post("/login", data=_login_form(client, form["email"], form["password"]), follow_redirects=False)
+    profile = client.get("/account")
+    assert 'value="Bình An"' in profile.text
+    assert 'value="plum" selected' in profile.text
+    assert 'avatar avatar-plum' in profile.text
+    client.cookies.clear()
+
+
+def test_account_contact_and_avatar_are_saved_privately(web_test_client):
+    client = web_test_client
+    client.cookies.clear()
+    client.get("/register")
+    form = {
+        "email": "profile@example.com",
+        "password": "DemoParent123!",
+        "password_confirmation": "DemoParent123!",
+        "display_name": "Minh An",
+        "csrf_token": client.cookies.get(CSRF_COOKIE_NAME),
+    }
+    assert client.post("/register", data=form, follow_redirects=False).status_code == 303
+    client.post("/login", data=_login_form(client, form["email"], form["password"]), follow_redirects=False)
+    profile = client.get("/account")
+    token = re.search(r'name="csrf_token" value="([^"]+)"', profile.text).group(1)
+    changes = {
+        "display_name": "Minh An", "avatar_color": "forest", "email": "new-profile@example.com",
+        "phone": "+84 912 345 678", "edit_contact": "true", "csrf_token": token,
+    }
+    assert "Nhập đúng mật khẩu" in client.post("/account", data=changes).text
+    picture = BytesIO()
+    Image.new("RGB", (320, 360), "green").save(picture, format="PNG")
+    updated = client.post(
+        "/account", data={**changes, "current_password": form["password"]},
+        files={"avatar": ("photo.png", picture.getvalue(), "image/png")}, follow_redirects=False,
+    )
+    assert updated.status_code == 303
+    profile = client.get("/account")
+    assert 'value="+84 912 345 678"' in profile.text
+    assert 'value="new-profile@example.com"' in profile.text
+    photo_url = re.search(r'src="(/account/avatar/[^"]+)"', profile.text).group(1)
+    avatar = client.get(photo_url)
+    assert avatar.headers["content-type"] == "image/jpeg"
+    assert Image.open(BytesIO(avatar.content)).size == (256, 256)
+    assert photo_url in client.get("/dashboard").text
+    client.cookies.clear()
+    assert client.get(photo_url).status_code == 404
+    assert client.post("/login", data=_login_form(client, changes["email"], form["password"]), follow_redirects=False).status_code == 302
+    profile = client.get("/account")
+    token = re.search(r'name="csrf_token" value="([^"]+)"', profile.text).group(1)
+    removed = client.post(
+        "/account", data={**changes, "phone": "", "remove_avatar": "true", "csrf_token": token}, follow_redirects=False,
+    )
+    assert removed.status_code == 303
+    assert "+84 912 345 678" not in client.get("/account").text
+    assert client.get(photo_url).status_code == 404
+    client.cookies.clear()
+
+
 def test_login_invalid_password(web_test_client):
     resp = web_test_client.post(
         "/login",
@@ -74,6 +162,25 @@ def test_login_invalid_password(web_test_client):
     )
     assert resp.status_code == 200
     assert "không chính xác" in resp.text
+
+
+def test_avatar_switch_account_ends_the_previous_session(web_test_client):
+    client = web_test_client
+    client.cookies.clear()
+    login = client.post("/login", data=_login_form(client), follow_redirects=False)
+    old_session = login.cookies.get(SESSION_COOKIE_NAME)
+    dashboard = client.get("/dashboard")
+    form = re.search(r'action="/logout\?switch_account=1"\s*>\s*<input[^>]+value="([^"]+)"', dashboard.text)
+    assert form
+    denied = client.post("/logout?switch_account=1", data={"csrf_token": "invalid"}, follow_redirects=False)
+    assert denied.status_code == 403
+    switched = client.post("/logout?switch_account=1", data={"csrf_token": form.group(1)}, follow_redirects=False)
+    assert switched.status_code == 303
+    assert switched.headers["location"] == "/login?switch_account=1"
+    assert "Đăng nhập bằng tài khoản bạn muốn chuyển sang." in client.get(switched.headers["location"]).text
+    stale = client.get("/dashboard", cookies={SESSION_COOKIE_NAME: old_session}, follow_redirects=False)
+    assert stale.headers["location"] == "/login"
+    client.cookies.clear()
 
 
 def test_login_success_and_dashboard_access(web_test_client):
@@ -91,7 +198,8 @@ def test_login_success_and_dashboard_access(web_test_client):
     dash_resp = web_test_client.get("/dashboard", cookies=cookies)
     assert dash_resp.status_code == 200
     assert "Bé Minh" in dash_resp.text
-    assert "Lệnh Điều Khiển Khẩn" in dash_resp.text
+    assert "Chưa có thiết bị" in dash_resp.text
+    assert 'id="reportDetails"' in dash_resp.text
     assert "Xóa Toàn Bộ Dữ Liệu Con Tôi" in dash_resp.text
 
 

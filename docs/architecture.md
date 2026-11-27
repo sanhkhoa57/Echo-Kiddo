@@ -1,6 +1,6 @@
 # Tài Liệu Kiến Trúc Hệ Thống (System Architecture Document)
 
-> **Tài liệu thuộc bộ đặc tả kiến trúc dự án OGK (Open Guardian for Kids)**
+> **Tài liệu thuộc bộ đặc tả kiến trúc dự án EC - Echo Kiddo**
 > - [Kiến trúc hệ thống (architecture.md)](./architecture.md) *(Tài liệu hiện tại)*
 > - [Đặc tả chức năng (functional-specification.md)](./functional-specification.md)
 > - [Đặc tả kỹ thuật (technical-specification.md)](./technical-specification.md)
@@ -29,12 +29,12 @@
 
 ## 1. Tổng Quan Dự Án (Project Overview)
 
-**OGK (Open Guardian for Kids)** là hệ thống hỗ trợ quản lý việc sử dụng máy tính của trẻ em trên nền tảng Windows 10/11 (x64), kết hợp với máy chủ quản trị tập trung và bảng điều khiển web dành cho phụ huynh và trẻ em.
+**EC - Echo Kiddo** là hệ thống hỗ trợ quản lý việc sử dụng máy tính của trẻ em trên nền tảng Windows 10/11 (x64), kết hợp với máy chủ quản trị tập trung và bảng điều khiển web dành cho phụ huynh và trẻ em.
 
 - **Triết lý cốt lõi:** *"Công cụ đồng hành, không phải phần mềm theo dõi lén"* (Transparent Companion, Not Stalkerware).
 - **Quy mô thực hiện:** Nhóm 03 sinh viên — Thời lượng 06 tuần (Đồ án môn học Mạng máy tính).
 - **Nguồn gốc tổng hợp kiến trúc:**
-  1. **Teacher Requirements (`DoAn01.docx`)**: Khung kiến trúc chuẩn Client-Server (`OGK-Agent` + `OGK-Server` + `Dashboard`), các yêu cầu bắt buộc F1–F5 và phụ lục kỹ thuật hệ thống – mạng M1–M6.
+  1. **Teacher Requirements (`DoAn01.docx`)**: Khung kiến trúc chuẩn Client-Server (`EC Agent` + `EC Server` + `Dashboard`), các yêu cầu bắt buộc F1–F5 và phụ lục kỹ thuật hệ thống – mạng M1–M6.
   2. **Current Project Baseline**: Ngăn xếp công nghệ đã được xác nhận (`Python 3.11+`, `FastAPI`, `SQLite`, `SQLAlchemy`, `Uvicorn`, `pywin32`, `psutil`).
   3. **Reference Application (`Safe Kids v5.1.27`)**: Chọn lọc các cơ chế kỹ thuật hệ thống có giá trị cao (khởi chạy tiến trình qua biên giới Session 0, giao thức IPC Named Pipe có xác thực SID & chống Timing Attack, nhận diện ứng dụng đa lớp SHA-256 + PE `OriginalFileName`, quản lý Snapshot cấu hình DNS/Registry trình duyệt và công cụ khôi phục sạch `Cleanup`) đồng thời loại bỏ hoàn toàn các tính năng xâm phạm quyền riêng tư (chụp màn hình lén, theo dõi URL đầy đủ/từ khóa tìm kiếm).
 
@@ -61,7 +61,7 @@
 
 ## 3. Kiến Trúc Tổng Thể Hệ Thống (System Architecture)
 
-Hệ thống OGK được thiết kế theo mô hình **Distributed Client-Service & Web Management Architecture** gồm hai nút vật lý/logic chính: **Máy của trẻ (`OGK-Agent` trên Windows 10/11)** và **Máy chủ quản trị (`OGK-Server` + `Web Dashboard` trên LAN/VPS Lab)**.
+Hệ thống EC - Echo Kiddo được thiết kế theo mô hình **Distributed Client-Service & Web Management Architecture** gồm hai nút vật lý/logic chính: **Máy của trẻ (`EC Agent` trên Windows 10/11)** và **Máy chủ quản trị (`EC Server` + `Web Dashboard` trên LAN/VPS Lab)**.
 
 ```mermaid
 flowchart TB
@@ -70,11 +70,11 @@ flowchart TB
         subgraph UserSession["Phiên Người Dùng (Standard User - Session 1+)"]
             Browser["Trình duyệt Web<br/>(Chrome / Edge / Firefox / Cốc Cốc)"]
             ChildApps["Ứng dụng & Trò chơi<br/>(Desktop Apps)"]
-            TrayUI["OGK-Tray UI (Python GUI)<br/>- Đồng hồ thời gian còn lại<br/>- Cửa sổ cảnh báo 10/5/1p & Ân hạn 60s<br/>- Nút 'Xin thêm giờ' / Nhập PIN phụ huynh<br/>- Màn hình 'Hôm nay em đã dùng gì'"]
+            TrayUI["EC Tray UI (Python GUI)<br/>- Đồng hồ thời gian còn lại<br/>- Cửa sổ cảnh báo 10/5/1p & Ân hạn 60s<br/>- Nút 'Xin thêm giờ' / Nhập PIN phụ huynh<br/>- Màn hình 'Hôm nay em đã dùng gì'"]
         end
 
         subgraph SystemSession["Phiên Hệ Thống (NT AUTHORITY\\SYSTEM - Session 0)"]
-            subgraph OGKService["OGK-Agent Windows Service"]
+            subgraph OGKService["EC Agent Windows Service"]
                 Lifecycle["Protection Lifecycle &<br/>Session Agent Launcher (WTS API)"]
                 PolicyEnforcer["Policy Verifier & Enforcer<br/>(HMAC/RSA Verification)"]
                 ScreenTimer["Screen-Time Counter<br/>(Monotonic Clock + Idle Detector)"]
@@ -90,7 +90,7 @@ flowchart TB
 
     subgraph ServerNode["MÁY CHỦ QUẢN TRỊ (LAN hoặc VPS Lab)"]
         direction TB
-        subgraph FastAPIServer["OGK-Server (FastAPI + Uvicorn + TLS 1.2+)"]
+        subgraph FastAPIServer["EC Server (FastAPI + Uvicorn + TLS 1.2+)"]
             AuthMod["Auth & Session Module<br/>(Argon2id, CSRF, Rate Limit, RBAC)"]
             EnrollMod["Enrollment & Device Token Module<br/>(Mã ghép 8 ký tự, JWT/Refresh Token)"]
             PolicyMod["Policy & Classification Engine<br/>(Versioned Policy + HMAC/RSA Signer)"]
@@ -122,24 +122,24 @@ flowchart TB
 
 Hệ thống được phân chia thành **5 tầng kiến trúc (Layers)** rõ ràng với nguyên tắc phụ thuộc một chiều từ trên xuống dưới:
 
-| Tầng (Layer) | Tại `OGK-Agent` (Máy của trẻ) | Tại `OGK-Server` & `Dashboard` (Máy chủ) |
+| Tầng (Layer) | Tại `EC Agent` (Máy của trẻ) | Tại `EC Server` & `Dashboard` (Máy chủ) |
 |---|---|---|
-| **1. Presentation & Transparency Layer (Tầng Giao diện & Minh bạch)** | `OGK-Tray UI`: Biểu tượng khay hệ thống, đồng hồ đếm ngược, hộp thoại cảnh báo 10/5/1 phút & ân hạn 60 giây, hộp thoại giải thích lýقف chặn ứng dụng, nút "Xin thêm giờ", màn hình "Hôm nay em đã dùng gì". | `Web Dashboard` (Jinja2 + HTMX + Chart.js): Giao diện quản trị phụ huynh (tương thích di động) và Cổng thông tin minh bạch cho trẻ (xem thống kê và nhật ký kiểm toán NT5). |
+| **1. Presentation & Transparency Layer (Tầng Giao diện & Minh bạch)** | `EC Tray UI`: Biểu tượng khay hệ thống, đồng hồ đếm ngược, hộp thoại cảnh báo 10/5/1 phút & ân hạn 60 giây, hộp thoại giải thích lýقف chặn ứng dụng, nút "Xin thêm giờ", màn hình "Hôm nay em đã dùng gì". | `Web Dashboard` (Jinja2 + HTMX + Chart.js): Giao diện quản trị phụ huynh (tương thích di động) và Cổng thông tin minh bạch cho trẻ (xem thống kê và nhật ký kiểm toán NT5). |
 | **2. Communication & Transport Layer (Tầng Giao tiếp & Truyền vận)** | - **External**: `HTTPS Client` (ghim chứng chỉ `Certificate Pinning`) + `WebSocket Client` (tự động kết nối lại với Exponential Backoff).<br>- **Internal IPC**: `Named Pipe Server/Client` sử dụng `IpcEnvelope` có xác thực `CallerSid` và `ChallengeToken`. | - `FastAPI Routers` (`/auth`, `/enroll`, `/heartbeat`, `/policy`, `/events`, `/commands`, `/reports`, `/audit`).<br>- `WebSocket Hub` đẩy lệnh khẩn thời gian thực.<br>- Middleware: TLS 1.2+, Rate Limiter, CSRF Protection, RBAC Guard. |
 | **3. Core Domain & Policy Layer (Tầng Nghiệp vụ & Chính sách)** | - `PolicyVerifier`: Xác minh chữ ký HMAC/RSA của chính sách.<br>- `ScreenTimeEngine`: Đếm giờ thực, kiểm tra ma trận $7 \times 48$, kiểm tra quota nhóm ứng dụng, chống chỉnh giờ.<br>- `DomainPolicyEngine`: Đối chiếu tên miền chính xác & tên miền con (`*.domain`), phân loại 6 nhóm, luật SafeSearch & DoH Canary. | - `EnrollmentService`: Sinh mã 8 ký tự (10 phút), cấp cặp Access/Refresh Token.<br>- `PolicyCompiler & Signer`: Biên dịch quy tắc của phụ huynh thành gói chính sách có số phiên bản (`policy_version`) và ký toàn vẹn.<br>- `EventAggregator & RetentionWorker`: Tổng hợp báo cáo, khử trùng lặp sự kiện và xóa dữ liệu quá 90 ngày. |
-| **4. OS Platform & Network Enforcement Layer (Tầng Cưỡng chế Hệ điều hành & Mạng)** | *(Kế thừa tinh hoa từ `SafeKids.Platform.dll`)*:<br>- `DnsProxyServer`: Lắng nghe `127.0.0.1:53` (UDP/TCP).<br>- `ProcessEnforcer`: Quét tiến trình, tính SHA-256 + đọc PE `OriginalFileName`, đóng tiến trình vi phạm.<br>- `NetworkDnsGuard`: Chụp snapshot & khóa DNS card mạng về `127.0.0.1`, gọi `DnsFlushResolverCache`.<br>- `BrowserPolicyGuard`: Chụp snapshot & áp Registry tắt DoH trên trình duyệt.<br>- `SessionLauncher`: Quản lý tiến trình `OGK-Tray` qua WTS API. | *(Không áp dụng — Server độc lập nền tảng, chạy trên Windows hoặc Linux container).* |
+| **4. OS Platform & Network Enforcement Layer (Tầng Cưỡng chế Hệ điều hành & Mạng)** | *(Kế thừa tinh hoa từ `SafeKids.Platform.dll`)*:<br>- `DnsProxyServer`: Lắng nghe `127.0.0.1:53` (UDP/TCP).<br>- `ProcessEnforcer`: Quét tiến trình, tính SHA-256 + đọc PE `OriginalFileName`, đóng tiến trình vi phạm.<br>- `NetworkDnsGuard`: Chụp snapshot & khóa DNS card mạng về `127.0.0.1`, gọi `DnsFlushResolverCache`.<br>- `BrowserPolicyGuard`: Chụp snapshot & áp Registry tắt DoH trên trình duyệt.<br>- `SessionLauncher`: Quản lý tiến trình `EC Tray` qua WTS API. | *(Không áp dụng — Server độc lập nền tảng, chạy trên Windows hoặc Linux container).* |
 | **5. Persistence & Crypto Layer (Tầng Lưu trữ & Mật mã)** | - `Local SQLite Store` (`C:\ProgramData\OGK\agent.db`): Lưu chính sách đã ký, hàng đợi sự kiện offline (`event_queue`), bộ đếm ngày (`daily_usage`), và bản chụp hệ thống (`system_snapshots`).<br>- `DPAPI / AES-GCM Store`: Bảo vệ token thiết bị và khóa xác thực cục bộ. | - `Server SQLite Database` (chế độ `WAL`) qua `SQLAlchemy ORM`.<br>- `CryptoProvider`: Băm mật khẩu `Argon2id`, mã hóa trường nhạy cảm `AES-256-GCM` (khóa từ biến môi trường/DPAPI). |
 
 ---
 
 ## 5. Kiến Trúc Mô-đun & Trách Nhiệm Thành Phần (Module & Component Architecture)
 
-### 5.1. Phân hệ Máy Trạm: `OGK-Agent` (`/agent`)
+### 5.1. Phân hệ Máy Trạm: `EC Agent` (`/agent`)
 
 | Mô-đun | Đường dẫn dự kiến | Trách nhiệm chính | Nguồn gốc / Tham chiếu |
 |---|---|---|---|
 | **Service Host & Lifecycle** | `/agent/service/win_service.py` | Đăng ký và chạy Windows Service dưới quyền `LocalSystem` (`win32serviceutil`); cấu hình SCM Service Recovery tự khởi động lại nếu bị crash/kill; điều phối các worker thread; tự dừng cưỡng chế nếu `Tray UI` không thể hiển thị (tuân thủ chống lạm dụng F5). | `DoAn01.docx` (4.2, F5, M5) + `REF-01` |
-| **Session Agent Launcher** | `/agent/service/session_launcher.py` | Sử dụng WTS API (`WTSEnumerateSessions`, `WTSQueryUserToken`, `CreateProcessAsUser`) để khởi chạy và giám sát `OGK-Tray` trong phiên đăng nhập của trẻ; nhận diện `WindowsUserSid` để phân biệt phiên của trẻ và phiên Administrator của phụ huynh. | `REF-01`, `REF-15` (Adapted) |
+| **Session Agent Launcher** | `/agent/service/session_launcher.py` | Sử dụng WTS API (`WTSEnumerateSessions`, `WTSQueryUserToken`, `CreateProcessAsUser`) để khởi chạy và giám sát `EC Tray` trong phiên đăng nhập của trẻ; nhận diện `WindowsUserSid` để phân biệt phiên của trẻ và phiên Administrator của phụ huynh. | `REF-01`, `REF-15` (Adapted) |
 | **IPC Server & Authorizer** | `/agent/ipc/pipe_protocol.py` | Truyền thông liên tiến trình giữa `Service` và `Tray UI` / `Cleanup CLI` qua Named Pipe `\\.\pipe\OGKServicePipe` (hoặc loopback `127.0.0.1` có token); đóng gói `IpcEnvelope`, kiểm tra `CallerSid` và xác thực `ChallengeToken` bằng `hmac.compare_digest`. | `DoAn01.docx` (4.2) + `REF-02` |
 | **Time & Schedule Engine** | `/agent/core/screen_time.py` | Đếm thời gian sử dụng thực bằng `time.monotonic()`; tạm dừng đếm khi màn hình khóa (`WTS_SESSION_LOCK`) hoặc không có thao tác chuột/bàn phím quá 5 phút (`GetLastInputInfo`); kiểm tra hạn mức ngày thường/cuối tuần, ma trận lịch tuần $7 \times 48$, và ngân sách theo nhóm ứng dụng; phát hiện gian lận chỉnh đồng hồ hệ thống. | `DoAn01.docx` (F1, M6) + `REF-05`, `REF-13` |
 | **App Controller** | `/agent/core/app_controller.py` | Quét tiến trình định kỳ (chu kỳ 2 giây), trích xuất đường dẫn tệp thực thi, tính mã băm SHA-256 (có LRU cache) và đọc `OriginalFileName` từ PE VersionInfo; kết thúc tiến trình bị chặn hoặc hết giờ nhóm ứng dụng và gửi tín hiệu cho `Tray UI` hiển thị hộp thoại giải thích lý do. | `DoAn01.docx` (F2) + `REF-03` |
@@ -149,7 +149,7 @@ Hệ thống được phân chia thành **5 tầng kiến trúc (Layers)** rõ r
 | **Tray UI & Child Transparency** | `/agent/ui/tray_app.py` | Hiển thị biểu tượng khay hệ thống và đồng hồ thời gian còn lại; hiển thị cửa sổ cảnh báo mốc 10, 5, 1 phút và đếm ngược 60 giây ân hạn lưu bài; hiển thị thông báo khi chặn ứng dụng; cho phép trẻ bấm "Xin thêm giờ" (gửi lên Server) hoặc phụ huynh nhập mã PIN/mật khẩu tại chỗ; mở màn hình "Hôm nay em đã dùng gì" và nhắc nghỉ mắt 20-20-20. | `DoAn01.docx` (4.2, F1, F2, F3) + `REF-04` |
 | **Clean Recovery & Uninstaller** | `/agent/cleanup/ogk_cleanup.py` | Xác thực mật khẩu phụ huynh (online hoặc qua hash Argon2id lưu cục bộ), ghi sự kiện gỡ cài đặt, đọc bảng `system_snapshots` để hoàn trả nguyên trạng cấu hình DNS card mạng (DHCP/Static), xóa Registry Policies của trình duyệt, flush DNS cache và gỡ Windows Service sạch sẽ. | `DoAn01.docx` (F4, README) + `REF-11` |
 
-### 5.2. Phân hệ Máy Chủ & Giao Diện Web: `OGK-Server` (`/server`) & `Dashboard` (`/dashboard`)
+### 5.2. Phân hệ Máy Chủ & Giao Diện Web: `EC Server` (`/server`) & `Dashboard` (`/dashboard`)
 
 | Mô-đun | Đường dẫn dự kiến | Trách nhiệm chính | Nguồn gốc / Tham chiếu |
 |---|---|---|---|
@@ -172,17 +172,17 @@ sequenceDiagram
     autonumber
     actor Parent as Phụ huynh (Dashboard)
     actor Child as Trẻ em (Máy trạm)
-    participant Server as OGK-Server (FastAPI)
-    participant Agent as OGK-Agent (Service + Tray)
+    participant Server as EC Server (FastAPI)
+    participant Agent as EC Agent (Service + Tray)
 
     Parent->>Server: Chọn hồ sơ trẻ + Xác nhận đồng ý (NĐ 13/2023) -> Tạo mã ghép
     Server-->>Parent: Trả mã ghép 8 ký tự (Hiệu lực 10 phút) + Ghi Audit Log
-    Parent->>Agent: Nhập mã ghép 8 ký tự trên giao diện cài đặt OGK-Agent
+    Parent->>Agent: Nhập mã ghép 8 ký tự trên giao diện cài đặt EC Agent
     Agent->>Server: POST /api/v1/enroll (pairing_code, device_fingerprint, os_info, windows_user_sid)
     Server->>Server: Kiểm tra hạn 10 phút, tạo device_id, sinh Access Token (15p) & Refresh Token
     Server-->>Agent: 200 OK (device_id, child_id, access_token, refresh_token, initial_policy)
     Agent->>Agent: Xác minh chữ ký Policy, mã hóa Token bằng DPAPI/AES-GCM, lưu SQLite cục bộ
-    Agent->>Child: Hiển thị biểu tượng OGK-Tray & thông báo minh bạch "Thiết bị đang được đồng hành"
+    Agent->>Child: Hiển thị biểu tượng EC Tray & thông báo minh bạch "Thiết bị đang được đồng hành"
 ```
 
 ### 6.2. Luồng Phân Giải & Lọc Tên Miền Qua DNS Proxy Cục Bộ (Mục F2, M1)
@@ -192,7 +192,7 @@ sequenceDiagram
     autonumber
     participant Browser as Trình duyệt (Chrome/Edge)
     participant Stub as Windows Stub Resolver (dnsapi.dll)
-    participant Proxy as OGK DNS Proxy (127.0.0.1:53)
+    participant Proxy as EC - Echo Kiddo DNS Proxy (127.0.0.1:53)
     participant Engine as DomainPolicyEngine & Cache
     participant Upstream as Upstream DNS (1.1.1.1 / 8.8.8.8)
     participant Queue as Local Event Queue (SQLite)
@@ -230,9 +230,9 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     actor Parent as Phụ huynh (Điện thoại)
-    participant Server as OGK-Server
-    participant Agent as OGK-Agent Service
-    participant Tray as OGK-Tray UI (Phiên của trẻ)
+    participant Server as EC Server
+    participant Agent as EC Agent Service
+    participant Tray as EC Tray UI (Phiên của trẻ)
 
     rect rgb(240, 248, 255)
         Note over Agent,Server: 1. Luồng Lệnh Khẩn Thời Gian Thực (< 5 giây qua WebSocket)
@@ -268,13 +268,13 @@ sequenceDiagram
 
 ## 7. Kiến Trúc Tích Hợp & Giao Thức (Integration Architecture)
 
-1. **Giao tiếp `OGK-Agent` $\leftrightarrow$ `OGK-Server` (Mạng LAN / Internet)**:
+1. **Giao tiếp `EC Agent` $\leftrightarrow$ `EC Server` (Mạng LAN / Internet)**:
    - **REST API qua HTTPS (TLS 1.2+)**: Sử dụng thư viện `httpx` với cơ chế **Certificate Pinning** (ghim mã băm SHA-256 của chứng chỉ CA/Server vào cấu hình bảo vệ của Agent). Nếu chứng chỉ máy chủ không khớp (ví dụ trẻ dùng công cụ MITM như Fiddler/Charles/mitmproxy để giả mạo Server trả về quota vô hạn), Agent lập tức từ chối kết nối và giữ nguyên chính sách cục bộ.
    - **WebSocket qua WSS (`/ws/agent/{device_id}`)**: Kênh truyền hai chiều duy trì liên tục kèm Ping/Pong mỗi 20 giây để nhận lệnh khẩn trong vòng $< 5\text{ giây}$. Nếu WebSocket đứt kết nối, Agent tự động kết nối lại (Exponential Backoff: $1\text{s}, 2\text{s}, 4\text{s}, \dots, \text{tối đa } 30\text{s}$) và nhận lệnh chờ qua nhịp tim 60 giây.
-2. **Giao tiếp `OGK-Service` (Session 0) $\leftrightarrow$ `OGK-Tray UI` (Session 1+)**:
+2. **Giao tiếp `EC Service` (Session 0) $\leftrightarrow$ `EC Tray UI` (Session 1+)**:
    - Sử dụng **Windows Named Pipe** (`\\.\pipe\OGKServicePipe`) hoặc Localhost Socket với giao thức đóng gói **`IpcEnvelope`** (kế thừa từ `SafeKids.Core.Ipc`):
      - Mọi bản tin đều chứa `protocol_version`, `request_id`, `type`, `timestamp_utc`, `caller_sid`, `challenge_token` và `payload`.
-     - `OGK-Service` lấy Windows SID thực sự của tiến trình đầu bên kia đường ống (`GetNamedPipeClientProcessId` / `OpenProcessToken`) để chống giả mạo.
+     - `EC Service` lấy Windows SID thực sự của tiến trình đầu bên kia đường ống (`GetNamedPipeClientProcessId` / `OpenProcessToken`) để chống giả mạo.
      - Các thao tác quản trị cục bộ (như xác nhận mật khẩu phụ huynh để gỡ cài đặt hoặc mở khóa khi mất mạng) sử dụng cơ chế **Challenge-Response** một lần (TTL 30 giây) và đối chiếu bằng `hmac.compare_digest` chống tấn công Timing Attack.
 
 ---
@@ -366,11 +366,11 @@ erDiagram
 ## 9. Trải Nghiệm Người Dùng & Luồng Tương Tác (UX & Interaction Architecture)
 
 1. **Hành trình của Trẻ em (Child Journey — Minh bạch & Nhân văn)**:
-   - **Trạng thái Bình thường (`NORMAL_ACTIVE`)**: Biểu tượng `OGK-Tray` luôn hiển thị ở khay hệ thống. Khi trẻ nhấp vào biểu tượng, cửa sổ nhỏ hiển thị số phút còn lại trong ngày, khung giờ được phép tiếp theo, nút **"Xin thêm giờ"** và nút **"Hôm nay em đã dùng gì"**.
-   - **Trạng thái Cảnh báo Sắp hết giờ (`QUOTA_WARNING`)**: Lần lượt tại các mốc **10 phút, 5 phút và 1 phút** trước khi hết hạn mức ngày (hoặc trước khi đến khung giờ khóa trong ma trận $7 \times 48$), `OGK-Tray` hiển thị thông báo nổi không chiếm quyền điều khiển bàn phím để trẻ chủ động biết.
+   - **Trạng thái Bình thường (`NORMAL_ACTIVE`)**: Biểu tượng `EC Tray` luôn hiển thị ở khay hệ thống. Khi trẻ nhấp vào biểu tượng, cửa sổ nhỏ hiển thị số phút còn lại trong ngày, khung giờ được phép tiếp theo, nút **"Xin thêm giờ"** và nút **"Hôm nay em đã dùng gì"**.
+   - **Trạng thái Cảnh báo Sắp hết giờ (`QUOTA_WARNING`)**: Lần lượt tại các mốc **10 phút, 5 phút và 1 phút** trước khi hết hạn mức ngày (hoặc trước khi đến khung giờ khóa trong ma trận $7 \times 48$), `EC Tray` hiển thị thông báo nổi không chiếm quyền điều khiển bàn phím để trẻ chủ động biết.
    - **Trạng thái Ân hạn 60 giây (`GRACE_PERIOD_60S` — Kế thừa và cải tiến từ `ViolationCountdownWindow`)**: Khi thời gian về 0, thay vì khóa máy đột ngột làm mất bài tập đang gõ dở, hệ thống bật cửa sổ đếm ngược **60 giây ân hạn** với thông điệp thân thiện: *"Đã hết giờ sử dụng máy hôm nay. Em còn 60 giây để lưu lại bài học hoặc gửi lời nhắn xin phép bố mẹ nhé!"* kèm nút **"Xin thêm giờ"** và **"Em đã lưu xong, khóa máy ngay"**.
-   - **Trạng thái Chặn Ứng dụng (`APP_BLOCKED_NOTICE`)**: Khi trẻ mở một ứng dụng nằm trong danh sách chặn hoặc đã hết ngân sách thời gian của nhóm Trò chơi, tiến trình bị đóng và `OGK-Tray` hiển thị cửa sổ giải thích rõ lý do (ví dụ: *"Ứng dụng Game.exe (tên gốc: GenshinImpact.exe) tạm dừng vì thuộc danh mục Trò chơi đã hết 45 phút hôm nay"*), tuyệt đối không tắt im lặng (F2).
-   - **Trạng thái Màn hình Khóa Phiên (`LOCKED_OVERLAY` / `LockWorkStation`)**: Khi hết 60 giây ân hạn, hệ thống hiển thị màn hình khóa của OGK (cho phép bấm "Xin thêm giờ" hoặc nhập mã mở khóa phụ huynh) và/hoặc khóa phiên làm việc. Khi phụ huynh bấm duyệt trên điện thoại, màn hình tự động mở khóa trong vòng $< 5\text{ giây}$.
+   - **Trạng thái Chặn Ứng dụng (`APP_BLOCKED_NOTICE`)**: Khi trẻ mở một ứng dụng nằm trong danh sách chặn hoặc đã hết ngân sách thời gian của nhóm Trò chơi, tiến trình bị đóng và `EC Tray` hiển thị cửa sổ giải thích rõ lý do (ví dụ: *"Ứng dụng Game.exe (tên gốc: GenshinImpact.exe) tạm dừng vì thuộc danh mục Trò chơi đã hết 45 phút hôm nay"*), tuyệt đối không tắt im lặng (F2).
+   - **Trạng thái Màn hình Khóa Phiên (`LOCKED_OVERLAY` / `LockWorkStation`)**: Khi hết 60 giây ân hạn, hệ thống hiển thị màn hình khóa của EC - Echo Kiddo (cho phép bấm "Xin thêm giờ" hoặc nhập mã mở khóa phụ huynh) và/hoặc khóa phiên làm việc. Khi phụ huynh bấm duyệt trên điện thoại, màn hình tự động mở khóa trong vòng $< 5\text{ giây}$.
 2. **Hành trình của Phụ huynh (Parent Journey — Điều khiển mọi nơi)**:
    - Truy cập Web Dashboard trên điện thoại hoặc máy tính $\rightarrow$ Xem biểu đồ trực quan $\rightarrow$ Nhận thông báo khi trẻ bấm "Xin thêm giờ" $\rightarrow$ Chạm 1 nút để cộng thêm 15 phút hoặc điều chỉnh ma trận lịch tuần $7 \times 48$.
 
@@ -382,7 +382,7 @@ Ngăn xếp công nghệ tuân thủ 100% quyết định đã xác nhận trong
 
 | Thành phần | Công nghệ / Thư viện chuẩn | Vai trò trong kiến trúc |
 |---|---|---|
-| **Ngôn ngữ chính** | **Python 3.11+ (x64)** | Ngôn ngữ thống nhất cho cả `OGK-Agent` và `OGK-Server`. |
+| **Ngôn ngữ chính** | **Python 3.11+ (x64)** | Ngôn ngữ thống nhất cho cả `EC Agent` và `EC Server`. |
 | **Backend Server** | **FastAPI + Uvicorn (ASGI)** | Cung cấp REST API, WebSocket thời gian thực và phục vụ giao diện Web Dashboard qua TLS 1.2+. |
 | **Cơ sở dữ liệu & ORM** | **SQLite 3 (WAL mode) + SQLAlchemy 2.0** | Lưu trữ dữ liệu trên Server (`server.db`) và bộ nhớ đệm/hàng đợi sự kiện/snapshot trên Agent (`agent.db`). |
 | **Tương tác Hệ điều hành Windows** | **`pywin32` (`win32serviceutil`, `win32ts`, `win32pipe`, `win32security`, `win32api`) + `psutil` + `winreg` + `ctypes`** | Quản lý Windows Service (`LocalSystem`), khởi chạy Tray UI qua Session 0 Isolation, giao tiếp Named Pipe, quét tiến trình, đọc PE Header, cấu hình Registry và gọi `dnsapi.dll`. |
@@ -398,28 +398,28 @@ Ngăn xếp công nghệ tuân thủ 100% quyết định đã xác nhận trong
 
 ### 11.1. Các Lớp Bảo Vệ Bảo Mật (Theo chuẩn F5 & ASVS)
 1. **Xác thực & Phiên làm việc**: Mật khẩu phụ huynh tối thiểu 10 ký tự, băm bằng **Argon2id**; khóa tài khoản tạm thời 15 phút sau 5 lần đăng nhập sai; giới hạn tần suất theo IP (Rate Limiting); Cookie phiên bật `HttpOnly`, `Secure`, `SameSite=Lax` (hạn 12 giờ), hủy phiên phía Server khi đăng xuất, kiểm tra CSRF Token cho mọi truy vấn `POST/PUT/DELETE`.
-2. **Bảo vệ Kênh truyền & Chống MITM**: Bắt buộc HTTPS/WSS (TLS 1.2+). `OGK-Agent` thực hiện **Certificate Pinning** (so khớp dấu vân tay SHA-256 của chứng chỉ Server/CA).
+2. **Bảo vệ Kênh truyền & Chống MITM**: Bắt buộc HTTPS/WSS (TLS 1.2+). `EC Agent` thực hiện **Certificate Pinning** (so khớp dấu vân tay SHA-256 của chứng chỉ Server/CA).
 3. **Định danh Thiết bị & Lưu trữ An toàn**: Sử dụng cặp `access_token` (hạn 15 phút) và `refresh_token` gắn chặt với `device_id`. Các bí mật trên Server và Agent được mã hóa bằng **AES-256-GCM** với khóa lấy từ biến môi trường (Server) hoặc **Windows DPAPI (`CryptProtectData`)** (Agent), tuyệt đối không hardcode khóa trong mã nguồn.
 4. **Kiểm soát Truy cập (RBAC & Anti-IDOR)**: Mọi truy vấn dữ liệu trẻ/thiết bị/báo cáo trên Server đều bắt buộc lọc theo `WHERE parent_id = current_user.id` ở tầng SQLAlchemy Query để triệt tiêu lỗ hổng IDOR.
 5. **Đặc quyền Cục bộ & Chống Lạm dụng (Anti-Stalkerware)**:
    - Thư mục `C:\ProgramData\OGK` được thiết lập NTFS ACL chỉ cho phép `NT AUTHORITY\SYSTEM` và nhóm `Administrators` quyền ghi (`Write/Modify`).
-   - Không có chế độ ẩn. Nếu `OGK-Tray` bị lỗi không thể hiển thị biểu tượng sau 3 lần thử khởi tạo liên tiếp, `OGK-Service` tự động chuyển sang trạng thái tạm ngừng cưỡng chế và ghi log để đảm bảo tính minh bạch tuyệt đối.
+   - Không có chế độ ẩn. Nếu `EC Tray` bị lỗi không thể hiển thị biểu tượng sau 3 lần thử khởi tạo liên tiếp, `EC Service` tự động chuyển sang trạng thái tạm ngừng cưỡng chế và ghi log để đảm bảo tính minh bạch tuyệt đối.
 
 ### 11.2. Xử Lý Lỗi & Khả Năng Chịu Lỗi (Mục M5)
 - **Kịch bản 1 — Mất mạng Internet/LAN**: Agent chuyển sang chế độ Offline ngay khi request nhịp tim thất bại; tiếp tục áp dụng chính sách đã ký trong SQLite cục bộ; tiếp tục đếm thời gian bằng `time.monotonic()`; lưu toàn bộ sự kiện vào bảng `event_queue`; DNS Proxy vẫn chặn tên miền vi phạm bình thường. Khi có mạng lại, Agent đồng bộ lô sự kiện kèm `idempotency_key`.
-- **Kịch bản 2 — Máy chủ `OGK-Server` ngừng hoạt động**: Tương tự mất mạng; Agent thử kết nối lại theo thuật toán Exponential Backoff (có Jitter) để không gây bão kết nối (Thundering Herd) khi máy chủ khởi động lại.
+- **Kịch bản 2 — Máy chủ `EC Server` ngừng hoạt động**: Tương tự mất mạng; Agent thử kết nối lại theo thuật toán Exponential Backoff (có Jitter) để không gây bão kết nối (Thundering Herd) khi máy chủ khởi động lại.
 - **Kịch bản 3 — Tiến trình Agent bị kết thúc**:
-  - Nếu trẻ (Standard User) cố tắt `OGK-Service` (SYSTEM): Hệ điều hành Windows từ chối ngay lập tức (`Access Denied`). Trong trường hợp tiến trình Service gặp lỗi bất thường, Windows Service Control Manager (SCM) được cấu hình `SC_ACTION_RESTART` (khởi động lại sau 5 giây).
-  - Nếu trẻ tắt `OGK-Tray` (User Session): `SessionAgentLauncher` trong Service phát hiện tiến trình biến mất trong chu kỳ quét 3 giây và tự động gọi `CreateProcessAsUser` bật lại `OGK-Tray`, đồng thời ghi nhận sự kiện.
+  - Nếu trẻ (Standard User) cố tắt `EC Service` (SYSTEM): Hệ điều hành Windows từ chối ngay lập tức (`Access Denied`). Trong trường hợp tiến trình Service gặp lỗi bất thường, Windows Service Control Manager (SCM) được cấu hình `SC_ACTION_RESTART` (khởi động lại sau 5 giây).
+  - Nếu trẻ tắt `EC Tray` (User Session): `SessionAgentLauncher` trong Service phát hiện tiến trình biến mất trong chu kỳ quét 3 giây và tự động gọi `CreateProcessAsUser` bật lại `EC Tray`, đồng thời ghi nhận sự kiện.
 
 ---
 
 ## 12. Ràng Buộc Kiến Trúc (Architectural Constraints)
 
-1. **Ràng buộc Nền tảng**: `OGK-Agent` phải chạy hoàn chỉnh trên máy Windows 10/11 (x64) sạch, cài đặt được trong vòng $\le 15\text{ phút}$ theo hướng dẫn trong `README.md`.
+1. **Ràng buộc Nền tảng**: `EC Agent` phải chạy hoàn chỉnh trên máy Windows 10/11 (x64) sạch, cài đặt được trong vòng $\le 15\text{ phút}$ theo hướng dẫn trong `README.md`.
 2. **Ràng buộc Dữ liệu Kiểm thử (Quy định nghiêm ngặt tại F2)**: Bộ 50 tên miền kiểm thử và $\ge 200$ tên miền phân loại **bắt buộc dùng địa chỉ công khai, an toàn hoặc tên miền mô phỏng trung tính** (ví dụ `.test`, `.example`, cổng thông tin trường học, báo điện tử). Tuyệt đối không chứa bất kỳ tên miền người lớn thật nào từ ứng dụng tham khảo.
 3. **Ràng buộc Quyền riêng tư (Mục F3)**: Không thêm bất kỳ cột thu thập hành vi nào ngoài 7 trường quy định của bảng sự kiện; thời hạn lưu trữ tối đa 90 ngày.
-4. **Ràng buộc Nguồn lực**: Kiến trúc được tối ưu hóa cho nhóm 03 sinh viên trong 06 tuần (1 sinh viên phụ trách `OGK-Server` & `Dashboard`, 1 sinh viên phụ trách `OGK-Agent Core/Service/IPC/UI`, 1 sinh viên phụ trách `DNS Proxy/Anti-Bypass/Tests/Báo cáo mạng M1–M6`).
+4. **Ràng buộc Nguồn lực**: Kiến trúc được tối ưu hóa cho nhóm 03 sinh viên trong 06 tuần (1 sinh viên phụ trách `EC Server` & `Dashboard`, 1 sinh viên phụ trách `EC Agent Core/Service/IPC/UI`, 1 sinh viên phụ trách `DNS Proxy/Anti-Bypass/Tests/Báo cáo mạng M1–M6`).
 
 ---
 
@@ -431,7 +431,7 @@ Ngăn xếp công nghệ tuân thủ 100% quyết định đã xác nhận trong
   1. **Trong $N = 7\text{ ngày}$ đầu mất kết nối Server**: Agent áp dụng đầy đủ 100% chính sách đã lưu trong bộ nhớ đệm cục bộ (hạn mức ngày, lịch tuần $7 \times 48$, chặn ứng dụng, lọc DNS). Phụ huynh vẫn có thể dùng **Mã PIN/Mật khẩu Ngoại tuyến (Offline Parent PIN)** trên máy trẻ để cấp thêm giờ hoặc mở khóa.
   2. **Sau khi quá hạn $N = 7\text{ ngày}$ không liên lạc được với Server (Stale Policy)**:
      - **Về Khóa máy & Hạn mức thời gian (Fail-Open cho học tập)**: Hệ thống **KHÔNG khóa cứng toàn bộ máy tính** (chuyển sang chế độ nới lỏng hạn mức cơ bản và cho phép các ứng dụng học tập/hệ thống hoạt động) để tránh biến máy tính của trẻ thành "cục gạch" nếu máy chủ phòng lab bị tắt hoặc gia đình đổi mạng mà phụ huynh quên mật khẩu cục bộ.
-     - **Về Lọc DNS & Chặn Ứng dụng Độc hại/Trò chơi (Giữ Baseline An toàn)**: Bộ lọc DNS Proxy và danh sách chặn nhóm `inappropriate` / `gaming` vẫn giữ nguyên theo bản chính sách ký số gần nhất, đồng thời hiển thị thông báo rõ trên `OGK-Tray`: *"Thiết bị đã mất kết nối máy chủ quá 7 ngày — Đang chạy chế độ an toàn cơ bản"*.
+     - **Về Lọc DNS & Chặn Ứng dụng Độc hại/Trò chơi (Giữ Baseline An toàn)**: Bộ lọc DNS Proxy và danh sách chặn nhóm `inappropriate` / `gaming` vẫn giữ nguyên theo bản chính sách ký số gần nhất, đồng thời hiển thị thông báo rõ trên `EC Tray`: *"Thiết bị đã mất kết nối máy chủ quá 7 ngày — Đang chạy chế độ an toàn cơ bản"*.
 - **Lý do bảo vệ khi vấn đáp**: Phù hợp hoàn hảo với triết lý *"Công cụ đồng hành"* của đề bài — vừa ngăn chặn trẻ cố tình rút dây mạng ngắn hạn để lách luật (nhờ 7 ngày giữ nguyên quota + chặn game), vừa đảm bảo tính khả dụng (Availability) cho việc học tập của trẻ khi xảy ra sự cố hạ tầng máy chủ dài ngày.
 
 ### ADR-02: Lựa chọn DNS Proxy Cục bộ (`127.0.0.1:53`) kết hợp Browser Registry Policy thay vì Ghi tệp `hosts`

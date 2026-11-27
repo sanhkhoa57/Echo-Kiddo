@@ -8,6 +8,7 @@ from server.models.policy import Policy
 from server.models.event import Event
 from server.models.audit_log import AuditLog
 from server.models.revoked_session import RevokedSession
+from server.models.account_profile import AccountProfile, AccountProfileDetails
 
 __all__ = [
     "Base",
@@ -19,4 +20,6 @@ __all__ = [
     "Event",
     "AuditLog",
     "RevokedSession",
+    "AccountProfile",
+    "AccountProfileDetails",
 ]

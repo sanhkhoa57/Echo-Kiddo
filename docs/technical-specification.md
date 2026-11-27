@@ -1,6 +1,6 @@
 # Đặc Tả Kỹ Thuật Hệ Thống (Technical Specification Document)
 
-> **Tài liệu thuộc bộ đặc tả kiến trúc dự án OGK (Open Guardian for Kids)**
+> **Tài liệu thuộc bộ đặc tả kiến trúc dự án EC - Echo Kiddo**
 > - [Kiến trúc hệ thống (architecture.md)](./architecture.md)
 > - [Đặc tả chức năng (functional-specification.md)](./functional-specification.md)
 > - [Đặc tả kỹ thuật (technical-specification.md)](./technical-specification.md) *(Tài liệu hiện tại)*
@@ -24,14 +24,14 @@
 
 ## 1. Ngăn Xếp Công Nghệ & Thư Viện Chi Tiết (Technology Stack)
 
-### 1.1. Phân hệ Máy Chủ (`OGK-Server` & `Dashboard`)
+### 1.1. Phân hệ Máy Chủ (`EC Server` & `Dashboard`)
 - **Runtime**: Python `3.11+` (x64).
 - **Web Framework & ASGI Server**: `fastapi>=0.110.0`, `uvicorn[standard]>=0.29.0`, `websockets>=12.0`.
 - **Database & ORM**: `SQLite 3.40+` (cấu hình `PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON;`), `sqlalchemy>=2.0.28`, `alembic>=1.13.0` (quản lý migration).
 - **Bảo mật & Mật mã**: `passlib[argon2]>=1.7.4`, `argon2-cffi>=23.1.0`, `cryptography>=42.0.0` (AES-256-GCM, HMAC-SHA256, RSA-PSS/Ed25519), `PyJWT>=2.8.0`, `slowapi>=0.1.9` (Rate limiting theo IP).
 - **Giao diện Dashboard**: `jinja2>=3.1.3`, `python-multipart`, `HTMX 1.9`, `Chart.js 4.x` (nhúng cục bộ để chạy tốt trong mạng phòng lab không cần Internet).
 
-### 1.2. Phân hệ Máy Trạm (`OGK-Agent` trên Windows 10/11 x64)
+### 1.2. Phân hệ Máy Trạm (`EC Agent` trên Windows 10/11 x64)
 - **Runtime**: Python `3.11+` (x64).
 - **Hệ thống Windows & Tiến trình**: `pywin32>=306` (`win32serviceutil`, `win32service`, `win32event`, `win32ts`, `win32security`, `win32process`, `win32pipe`, `win32file`, `win32api`, `win32crypt`), `psutil>=5.9.8`.
 - **Mạng & DNS Proxy**: `dnslib>=0.9.24` kết hợp `asyncio.DatagramProtocol` / `asyncio.Protocol` (lắng nghe `127.0.0.1:53` UDP/TCP), `httpx>=0.27.0` (HTTPS Client hỗ trợ Certificate Pinning), `websockets>=12.0`, `tldextract>=5.1.1` (chạy chế độ offline snapshot để trích xuất chính xác tên miền cấp hai eTLD+1 cho trường `subject`).
@@ -45,7 +45,7 @@ Cấu trúc thư mục dự án tuân thủ đúng Mục 8 (*Sản phẩm phải
 
 ```text
 /
-├── agent/                          # Mã nguồn OGK-Agent chạy trên Windows 10/11
+├── agent/                          # Mã nguồn EC Agent chạy trên Windows 10/11
 │   ├── service/
 │   │   ├── win_service.py          # OGKWindowsService (LocalSystem, SCM Recovery)
 │   │   └── session_launcher.py     # SessionAgentLauncher (WTS API khởi chạy Tray UI)
@@ -70,7 +70,7 @@ Cấu trúc thư mục dự án tuân thủ đúng Mục 8 (*Sản phẩm phải
 │   ├── cleanup/
 │   │   └── ogk_cleanup.py          # Khôi phục sạch DNS, Registry & gỡ Service hợp pháp
 │   └── requirements.txt
-├── server/                         # Mã nguồn OGK-Server (FastAPI)
+├── server/                         # Mã nguồn EC Server (FastAPI)
 │   ├── main.py                     # Khởi tạo FastAPI, TLS, Middleware, Lifespan tasks
 │   ├── models/                     # SQLAlchemy ORM Models (User, Child, Device, Policy, Event, Audit)
 │   ├── schemas/                    # Pydantic v2 Validation Schemas (Strict 7-field Event)
@@ -103,7 +103,7 @@ Cấu trúc thư mục dự án tuân thủ đúng Mục 8 (*Sản phẩm phải
 
 ## 3. Giao Thức Tương Tác Liên Thành Phần (Component Interactions & IPC)
 
-### 3.1. Giao Thức IPC Cục Bộ Giữa `OGK-Service` và `OGK-Tray` (Kế thừa `REF-02`)
+### 3.1. Giao Thức IPC Cục Bộ Giữa `EC Service` và `EC Tray` (Kế thừa `REF-02`)
 - **Kênh truyền**: Windows Named Pipe `\\.\pipe\OGKServicePipe` với Security Descriptor cho phép `SYSTEM`, `Administrators` và `Authenticated Users` kết nối, nhưng phân quyền thực thi theo `CallerSid`.
 - **Định dạng bản tin (`IpcEnvelope`)**: Khuôn dạng độ dài tiền tố 4-byte (`uint32 little-endian`) theo sau là chuỗi UTF-8 JSON:
 
@@ -120,22 +120,22 @@ Cấu trúc thư mục dự án tuân thủ đúng Mục 8 (*Sản phẩm phải
 ```
 
 - **Quy tắc xác thực IPC**:
-  1. `OGK-Service` gọi Win32 API `GetNamedPipeClientProcessId(pipe_handle)` và `OpenProcessToken` để lấy `actual_sid` từ nhân Windows, không tin tưởng mù quáng trường `caller_sid` trong JSON.
+  1. `EC Service` gọi Win32 API `GetNamedPipeClientProcessId(pipe_handle)` và `OpenProcessToken` để lấy `actual_sid` từ nhân Windows, không tin tưởng mù quáng trường `caller_sid` trong JSON.
   2. Các lệnh đặc quyền (`VERIFY_PARENT_PIN`, `UNINSTALL_AUTH`) yêu cầu gọi `GET_CHALLENGE` trước để nhận `challenge_token` có hạn 30 giây, sau đó gửi kèm HMAC hoặc mật khẩu phụ huynh; Service kiểm tra bằng hàm thời gian cố định `hmac.compare_digest(expected, provided)` (chống Timing Attack).
 
-### 3.2. Cơ Chế Khởi Chạy `OGK-Tray` Vượt Biên Giới Session 0 (Kế thừa `REF-01`)
+### 3.2. Cơ Chế Khởi Chạy `EC Tray` Vượt Biên Giới Session 0 (Kế thừa `REF-01`)
 Do Windows Service chạy ở Session 0 không có màn hình Desktop, `SessionAgentLauncher` thực hiện chu kỳ kiểm tra mỗi 3 giây:
 1. Gọi `win32ts.WTSEnumerateSessions()` tìm phiên có trạng thái `WTSActive`.
 2. Lấy SID của người dùng đang đăng nhập phiên đó qua `win32ts.WTSQueryUserToken(session_id)` + `GetTokenInformation(TokenUser)`.
 3. Nếu SID thuộc hồ sơ trẻ đang được quản lý và chưa có tiến trình `ogk_tray.exe` chạy trong `session_id` đó:
-   - Gọi `DuplicateTokenEx` tạo Primary Token, tạo khối môi trường `CreateEnvironmentBlock`, và gọi `CreateProcessAsUser` với `lpDesktop = "winsta0\\default"` để hiển thị `OGK-Tray` lên màn hình của trẻ.
-4. **Thực thi quy tắc Chống Lạm Dụng (F5)**: Nếu sau 3 lần gọi `CreateProcessAsUser` liên tiếp mà `OGK-Tray` không kết nối vào Named Pipe để báo trạng thái hiển thị biểu tượng thành công, `OGK-Service` tự động chuyển sang trạng thái `UNPROTECTED_HALT` (dừng chặn/khóa) để tuân thủ nghiêm ngặt quy định *"Nếu không thể hiển thị biểu tượng, agent phải tự dừng"*.
+   - Gọi `DuplicateTokenEx` tạo Primary Token, tạo khối môi trường `CreateEnvironmentBlock`, và gọi `CreateProcessAsUser` với `lpDesktop = "winsta0\\default"` để hiển thị `EC Tray` lên màn hình của trẻ.
+4. **Thực thi quy tắc Chống Lạm Dụng (F5)**: Nếu sau 3 lần gọi `CreateProcessAsUser` liên tiếp mà `EC Tray` không kết nối vào Named Pipe để báo trạng thái hiển thị biểu tượng thành công, `EC Service` tự động chuyển sang trạng thái `UNPROTECTED_HALT` (dừng chặn/khóa) để tuân thủ nghiêm ngặt quy định *"Nếu không thể hiển thị biểu tượng, agent phải tự dừng"*.
 
 ---
 
 ## 4. Mô Hình Dữ Liệu & Lược Đồ Cơ Sở Dữ Liệu (Data Models)
 
-### 4.1. Lược Đồ Cơ Sở Dữ Liệu Trên `OGK-Server` (`server.db` — SQLite WAL)
+### 4.1. Lược Đồ Cơ Sở Dữ Liệu Trên `EC Server` (`server.db` — SQLite WAL)
 
 ```sql
 -- 1. Bảng Tài khoản Phụ huynh & Quản trị viên
@@ -237,7 +237,7 @@ CREATE TABLE audit_logs (
 CREATE INDEX idx_audit_child_ts ON audit_logs(child_id, ts_utc DESC);
 ```
 
-### 4.2. Lược Đồ Bộ Nhớ Đệm Cục Bộ Trên `OGK-Agent` (`C:\ProgramData\OGK\agent.db`)
+### 4.2. Lược Đồ Bộ Nhớ Đệm Cục Bộ Trên `EC Agent` (`C:\ProgramData\OGK\agent.db`)
 1. `cached_policy`: Lưu bản sao JSON chính sách gần nhất kèm `version`, `signature` và `fetched_at_utc`.
 2. `event_queue`: Lưu các sự kiện chờ đồng bộ gồm `idempotency_key`, `ts`, `device_id`, `child_id`, `type`, `subject`, `duration_sec`, `policy_id`, `synced` (`0`/`1`).
 3. `daily_usage_state`: Lưu `date_local`, `used_total_sec`, `category_used_json`, `last_monotonic_sec`, `last_wall_clock_utc` (phục vụ chống chỉnh đồng hồ hệ thống).
@@ -300,7 +300,7 @@ Mục này đặc tả chi tiết kỹ thuật cho **6 hạng mục bắt buộc
 2. **Đường đi gói tin**:
    - Bước 1: Trình duyệt gọi hàm phân giải tên miền của hệ điều hành (`getaddrinfo`).
    - Bước 2: Dịch vụ Windows DNS Client (`Dnscache` / Stub Resolver) gửi gói tin `Standard query A/AAAA` qua giao thức UDP (hoặc TCP) từ cổng nguồn ngẫu nhiên `127.0.0.1:<ephemeral_port>` tới đích `127.0.0.1:53`.
-   - Bước 3: `OGK DNS Proxy` bắt gói tin trên giao diện Loopback (`\Device\NPF_Loopback` khi bắt bằng Wireshark), chuẩn hóa tên miền (`qname.lower().rstrip('.')`) và tra cứu trong `DomainPolicyEngine` (cấu trúc cây hậu tố Suffix Trie / HashSet đạt độ phức tạp $O(k)$ với $k$ là số nhãn tên miền).
+   - Bước 3: `EC - Echo Kiddo DNS Proxy` bắt gói tin trên giao diện Loopback (`\Device\NPF_Loopback` khi bắt bằng Wireshark), chuẩn hóa tên miền (`qname.lower().rstrip('.')`) và tra cứu trong `DomainPolicyEngine` (cấu trúc cây hậu tố Suffix Trie / HashSet đạt độ phức tạp $O(k)$ với $k$ là số nhãn tên miền).
    - Bước 4:
      - Nếu bị chặn: Trả bản tin DNS Response có cờ `QR=1, RA=1`, `RCODE=0` kèm `A 0.0.0.0` (hoặc `RCODE=3 NXDOMAIN`), `TTL=60`.
      - Nếu là máy chủ tìm kiếm cần SafeSearch: Trả bản ghi `CNAME forcesafesearch.google.com` kèm địa chỉ IP mục tiêu.
@@ -308,32 +308,32 @@ Mục này đặc tả chi tiết kỹ thuật cho **6 hạng mục bắt buộc
 
 ### 6.2. M2 — Bảng So Sánh 4 Phương Án Chặn Website
 
-| Tiêu chí đánh giá | 1. Tệp `hosts` *(Phương pháp của Safe Kids v5.1.27)* | 2. DNS Proxy cục bộ `127.0.0.1:53` *(Phương án chính của OGK)* | 3. HTTP/HTTPS Proxy cục bộ | 4. Bộ lọc WFP (Windows Filtering Platform) |
+| Tiêu chí đánh giá | 1. Tệp `hosts` *(Phương pháp của Safe Kids v5.1.27)* | 2. DNS Proxy cục bộ `127.0.0.1:53` *(Phương án chính của EC - Echo Kiddo)* | 3. HTTP/HTTPS Proxy cục bộ | 4. Bộ lọc WFP (Windows Filtering Platform) |
 |---|---|---|---|---|
 | **1. Độ chính xác** | **Thấp – Trung bình**: Chỉ khớp chính xác từng hostname liệt kê; **không** hỗ trợ wildcard `*.domain.com`. | **Cao**: Hỗ trợ khớp chính xác tên miền gốc và toàn bộ tên miền con (`*.domain.com`), hỗ trợ CNAME SafeSearch. | **Rất cao**: Lọc được tới mức đường dẫn URL đầy đủ nếu giải mã TLS (MITM). | **Cao**: Lọc theo địa chỉ IP, cổng, tiến trình và SNI (ở tầng gói tin). |
 | **2. Khả năng chặn HTTPS** | **Có** (chặn trước khi thiết lập kết nối TCP/TLS). | **Có** (chặn ở pha phân giải tên miền trước khi bắt tay TLS, không cần cài chứng chỉ CA giả mạo trình duyệt). | Cần xem xét SNI (`CONNECT`) hoặc cài Root CA vào máy để giải mã HTTPS (gây rủi ro bảo mật). | **Có** (chặn kết nối TCP/IP hoặc kiểm tra trường TLS ClientHello SNI). |
 | **3. Chi phí hiện thực** | **Rất thấp** (chỉ đọc/ghi tệp văn bản). | **Trung bình – Khá** (xây dựng UDP/TCP DNS Server bằng Python `dnslib` + `asyncio` trong 6 tuần). | **Cao** (xử lý chứng chỉ số, hiệu năng luồng TCP và tương thích ứng dụng). | **Rất cao** (đòi hỏi lập trình C/C++ Kernel Callout Driver hoặc WinDivert/WFP API phức tạp). |
-| **4. Khả năng bị vượt** | Dễ bị vượt bởi DoH, đổi tên miền con (`sub1.domain.com`) hoặc truy cập IP trực tiếp. | Có thể bị vượt nếu bật DoH hoặc đổi DNS thủ công $\rightarrow$ **Khắc phục trong OGK** bằng chặn DoH Canary + Browser Registry Policy + Khóa DNS Card mạng. | Bị vượt nếu ứng dụng không tôn trọng cấu hình System Proxy. | Khó bị vượt nhất ở tầng mạng cục bộ, nhưng vẫn bị vượt bởi VPN mã hóa nếu không chặn ứng dụng VPN. |
+| **4. Khả năng bị vượt** | Dễ bị vượt bởi DoH, đổi tên miền con (`sub1.domain.com`) hoặc truy cập IP trực tiếp. | Có thể bị vượt nếu bật DoH hoặc đổi DNS thủ công $\rightarrow$ **Khắc phục trong EC - Echo Kiddo** bằng chặn DoH Canary + Browser Registry Policy + Khóa DNS Card mạng. | Bị vượt nếu ứng dụng không tôn trọng cấu hình System Proxy. | Khó bị vượt nhất ở tầng mạng cục bộ, nhưng vẫn bị vượt bởi VPN mã hóa nếu không chặn ứng dụng VPN. |
 | **5. Ảnh hưởng hiệu năng** | Khi tệp `hosts` $> 50.000$ dòng (như `SafeKids` có 83.776 dòng), dịch vụ `Dnscache` của Windows có thể tăng CPU đột biến khi nạp lại. | **Rất nhẹ**: Tra cứu trong bộ nhớ RAM ($< 1\text{ ms}$) và có bộ nhớ đệm DNS Cache; không ảnh hưởng băng thông tải dữ liệu. | **Nặng hơn**: Mọi lưu lượng tải trang/video đều phải đi qua tiến trình Proxy. | **Nhẹ** nhưng nếu xử lý ở User-mode không khéo sẽ làm tăng độ trễ mọi gói tin mạng. |
 
 ### 6.3. M3 — Phân Tích 9 Kỹ Thuật Đường Vòng (Bypass Vectors) & Biện Pháp Đối Phó
 
-| # | Kỹ thuật vượt rào | Mô tả cơ chế vượt | Biện pháp đối phó trong kiến trúc OGK (Kết hợp từ `Safe Kids` & Yêu cầu Giảng viên) |
+| # | Kỹ thuật vượt rào | Mô tả cơ chế vượt | Biện pháp đối phó trong kiến trúc EC - Echo Kiddo (Kết hợp từ `Safe Kids` & Yêu cầu Giảng viên) |
 |---|---|---|---|
 | **1** | **Đổi DNS thủ công** (vd: đổi sang `8.8.8.8`) | Trẻ mở Network Connections đổi DNS IPv4 để không đi qua `127.0.0.1:53`. | 1) Tài khoản trẻ là Standard User nên bị giới hạn quyền sửa cấu hình card mạng.<br>2) `NetworkDnsGuard` (học từ `REF-10`) định kỳ kiểm tra DNS card mạng; nếu lệch khỏi `127.0.0.1` sẽ lập tức ép lại về `127.0.0.1` và gọi `DnsFlushResolverCache()`. |
 | **2** | **DNS-over-HTTPS (DoH)** | Trình duyệt gửi truy vấn DNS mã hóa qua cổng HTTPS 443. | 1) Trả `NXDOMAIN` cho tên miền canary `use-application-dns.net` (Firefox).<br>2) Chặn phân giải danh sách điểm cuối DoH phổ biến (`dns.google`, `cloudflare-dns.com`...).<br>3) Áp Registry Group Policy tắt DoH (`DnsOverHttpsMode = "off"`) trên Chrome/Edge/Brave/Cốc Cốc (`REF-08`). |
 | **3** | **DNS-over-TLS (DoT)** | Truy vấn DNS qua cổng TCP/UDP 853. | Chặn các tên miền máy chủ DoT phổ biến trong DNS Proxy và kiểm tra kết nối cổng 853 trong `BypassDetector`. |
 | **4** | **VPN / Proxy công cộng** | Dùng phần mềm VPN (WARP, OpenVPN, Ultrasurf) hoặc trình duyệt tích hợp VPN. | 1) `App Controller` chặn tệp thực thi của các công cụ VPN phổ biến theo SHA-256 (`REF-03`).<br>2) `BypassDetector` quét giao diện mạng ảo (TAP/TUN/WireGuard) và Registry `ProxyEnable` (`REF-09`) để cảnh báo phụ huynh. |
 | **5** | **Truy cập trực tiếp bằng địa chỉ IP** | Nhập `https://1.2.3.4` vào thanh địa chỉ để bỏ qua bước phân giải DNS. | Hầu hết các trang web hiện đại dùng CDN/Virtual Hosting (Cloudflare/SNI) và chứng chỉ TLS gắn với tên miền nên truy cập trực tiếp bằng IP sẽ bị lỗi chứng chỉ TLS hoặc lỗi `403 Direct IP access not allowed`. Ghi nhận rõ giới hạn của phương pháp thuần DNS trong báo cáo M3. |
-| **6** | **Kết thúc tiến trình Agent (Kill Process)** | Dùng Task Manager hoặc `taskkill` để tắt Agent. | 1) `OGK-Service` chạy dưới quyền `NT AUTHORITY\SYSTEM`, tài khoản Standard User của trẻ bị hệ điều hành từ chối quyền `TerminateProcess` (`Access Denied`).<br>2) Nếu trẻ tắt `OGK-Tray`, `SessionAgentLauncher` tự động khởi chạy lại sau $\le 3\text{ giây}$ (`REF-01`). |
+| **6** | **Kết thúc tiến trình Agent (Kill Process)** | Dùng Task Manager hoặc `taskkill` để tắt Agent. | 1) `EC Service` chạy dưới quyền `NT AUTHORITY\SYSTEM`, tài khoản Standard User của trẻ bị hệ điều hành từ chối quyền `TerminateProcess` (`Access Denied`).<br>2) Nếu trẻ tắt `EC Tray`, `SessionAgentLauncher` tự động khởi chạy lại sau $\le 3\text{ giây}$ (`REF-01`). |
 | **7** | **Chỉnh lùi đồng hồ hệ thống** | Lùi giờ Windows về 3 tiếng trước để có thêm thời gian chơi. | Bộ đếm thời gian dùng đồng hồ đơn điệu `time.monotonic()` kết hợp lưu `last_wall_clock_utc` và đối chiếu `server_utc` mỗi nhịp tim 60 giây (`REF-13` / M6). |
-| **8** | **Đăng nhập bằng tài khoản Windows khác** | Chuyển sang tài khoản User khác trên cùng máy tính để thoát giám sát. | Tài khoản trẻ là Standard User nên không thể tự tạo tài khoản mới; `OGK-Service` chạy toàn hệ thống (Session 0) và kiểm tra mọi phiên đăng nhập không thuộc nhóm `Administrators` (`REF-15`). |
-| **9** | **Khởi động Safe Mode hoặc Boot từ USB** | Vào Safe Mode (nơi dịch vụ bên thứ ba không chạy) hoặc dùng USB Live OS. | Giải pháp chuẩn ở cấp cấu hình hệ thống: đặt mật khẩu BIOS/UEFI (chặn Boot từ USB) và vô hiệu hóa quyền khởi động lại vào Safe Mode của Standard User; đồng thời `OGK-Server` phát hiện mất nhịp tim (Heartbeat) bất thường trong khung giờ trẻ thường dùng máy. |
+| **8** | **Đăng nhập bằng tài khoản Windows khác** | Chuyển sang tài khoản User khác trên cùng máy tính để thoát giám sát. | Tài khoản trẻ là Standard User nên không thể tự tạo tài khoản mới; `EC Service` chạy toàn hệ thống (Session 0) và kiểm tra mọi phiên đăng nhập không thuộc nhóm `Administrators` (`REF-15`). |
+| **9** | **Khởi động Safe Mode hoặc Boot từ USB** | Vào Safe Mode (nơi dịch vụ bên thứ ba không chạy) hoặc dùng USB Live OS. | Giải pháp chuẩn ở cấp cấu hình hệ thống: đặt mật khẩu BIOS/UEFI (chặn Boot từ USB) và vô hiệu hóa quyền khởi động lại vào Safe Mode của Standard User; đồng thời `EC Server` phát hiện mất nhịp tim (Heartbeat) bất thường trong khung giờ trẻ thường dùng máy. |
 
 ### 6.4. M4, M5, M6 — Đo Hiệu Năng, Chịu Lỗi & Đồng Bộ Thời Gian
 - **M4 (Phương pháp đo hiệu năng — $\ge 30$ mẫu/phép đo)**:
-  - Kịch bản tự động `tests/benchmark_m4.py` thu thập 30 mẫu liên tiếp cho: (1) CPU `%` và RAM `RSS (MB)` của `OGK-Service` + `OGK-Tray` ở trạng thái rảnh (Idle) và trạng thái cao điểm (gửi 50 truy vấn DNS/giây + quét 150 tiến trình); (2) Độ trễ phân giải DNS ($p_{50}, p_{95}$ tính bằng `ms`) khi không bật Agent, khi bật Agent (Cache Miss) và khi bật Agent (Cache Hit); (3) Độ trễ áp dụng chính sách và lệnh khẩn từ lúc gọi API trên Server đến lúc Agent thực thi xong (30 lần đo).
-- **M5 (Khả năng chịu lỗi)**: Kiểm thử tự động và thực tế cho 3 kịch bản: ngắt card mạng (Offline queueing + Idempotent sync), dừng `OGK-Server` (Backoff reconnect), và `taskkill /F /IM ogk_tray.exe` (tự khôi phục trong $\le 3\text{ giây}$).
+  - Kịch bản tự động `tests/benchmark_m4.py` thu thập 30 mẫu liên tiếp cho: (1) CPU `%` và RAM `RSS (MB)` của `EC Service` + `EC Tray` ở trạng thái rảnh (Idle) và trạng thái cao điểm (gửi 50 truy vấn DNS/giây + quét 150 tiến trình); (2) Độ trễ phân giải DNS ($p_{50}, p_{95}$ tính bằng `ms`) khi không bật Agent, khi bật Agent (Cache Miss) và khi bật Agent (Cache Hit); (3) Độ trễ áp dụng chính sách và lệnh khẩn từ lúc gọi API trên Server đến lúc Agent thực thi xong (30 lần đo).
+- **M5 (Khả năng chịu lỗi)**: Kiểm thử tự động và thực tế cho 3 kịch bản: ngắt card mạng (Offline queueing + Idempotent sync), dừng `EC Server` (Backoff reconnect), và `taskkill /F /IM ogk_tray.exe` (tự khôi phục trong $\le 3\text{ giây}$).
 - **M6 (Đồng bộ thời gian & Chống chỉnh giờ)**:
   - Công thức tính thời gian hoạt động mỗi chu kỳ $\Delta t = \text{monotonic\_now} - \text{monotonic\_prev}$ (chỉ cộng vào `used_total_sec` khi `0 < \Delta t <= 10` và `idle_sec <= 300`).
   - Tại mỗi nhịp tim 60 giây: $\text{drift\_sec} = |\text{agent\_wall\_clock\_utc} - \text{server\_utc}|$. Nếu $\text{drift\_sec} > 120\text{ giây}$, hệ thống ghi nhận cảnh báo lệch đồng hồ và sử dụng `server_utc` làm mốc tham chiếu cho ma trận lịch tuần $7 \times 48$.
@@ -342,8 +342,8 @@ Mục này đặc tả chi tiết kỹ thuật cho **6 hạng mục bắt buộc
 
 ## 7. Phụ Thuộc Bên Ngoài & Ràng Buộc Kỹ Thuật (External Dependencies & Constraints)
 
-1. **Không phụ thuộc dịch vụ đám mây trả phí**: Toàn bộ `OGK-Server`, `OGK-Agent` và `Dashboard` hoạt động độc lập 100% trong mạng LAN phòng lab hoặc máy ảo cục bộ.
-2. **Tương thích Hệ điều hành**: `OGK-Agent` yêu cầu Windows 10 hoặc Windows 11 (64-bit) với quyền Administrator ở bước cài đặt ban đầu (để đăng ký Windows Service và thiết lập ACL thư mục `C:\ProgramData\OGK`).
+1. **Không phụ thuộc dịch vụ đám mây trả phí**: Toàn bộ `EC Server`, `EC Agent` và `Dashboard` hoạt động độc lập 100% trong mạng LAN phòng lab hoặc máy ảo cục bộ.
+2. **Tương thích Hệ điều hành**: `EC Agent` yêu cầu Windows 10 hoặc Windows 11 (64-bit) với quyền Administrator ở bước cài đặt ban đầu (để đăng ký Windows Service và thiết lập ACL thư mục `C:\ProgramData\OGK`).
 3. **An toàn Dữ liệu Kiểm thử**: Tệp seed phân loại 200+ tên miền (`server/seeds/domain_catalog.json`) và bộ 50 tên miền kiểm thử chỉ chứa các tên miền giáo dục/tin tức hợp lệ và các tên miền mô phỏng trung tính (`.test`, `.example`), tuân thủ tuyệt đối quy định tại Mục F2.
 
 ---

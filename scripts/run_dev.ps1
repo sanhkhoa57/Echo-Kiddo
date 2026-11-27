@@ -1,12 +1,12 @@
 <#
 .SYNOPSIS
-    OGK (Open Guardian for Kids) - All-in-One Development & Lab Launcher
+    EC - Echo Kiddo - All-in-One Development & Lab Launcher
 .DESCRIPTION
     Quick-launch script for Windows 10/11:
     - Auto-generates TLS certificates & seeds database
-    - Starts OGK-Server with HTTPS
-    - Starts OGK-Agent with Certificate Pinning
-    - Starts OGK-Tray UI
+    - Starts EC Server with HTTPS
+    - Starts EC Agent with Certificate Pinning
+    - Starts EC Tray UI
     - Executes Clean Recovery or Tests
 #>
 
@@ -33,7 +33,7 @@ if (-not (Test-Path $PythonExe)) {
 }
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "       OGK (Open Guardian for Kids) - LAB & DEV HUB       " -ForegroundColor Cyan
+Write-Host "       EC - Echo Kiddo - LAB & DEV HUB       " -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
 switch ($Action) {
@@ -47,7 +47,7 @@ switch ($Action) {
             Write-Host ">>> Chưa có chứng chỉ TLS, tự động chạy setup..." -ForegroundColor Yellow
             & $PythonExe "$ProjectRoot\scripts\setup_lab.py"
         }
-        Write-Host ">>> Khởi chạy OGK-Server HTTPS trên 0.0.0.0:8000..." -ForegroundColor Green
+        Write-Host ">>> Khởi chạy EC Server HTTPS trên 0.0.0.0:8000..." -ForegroundColor Green
         & $UvicornExe server.main:app --host 0.0.0.0 --port 8000 --ssl-keyfile certs/server.key --ssl-certfile certs/server.crt --reload
     }
 
@@ -60,12 +60,12 @@ switch ($Action) {
                 }
             }
         }
-        Write-Host ">>> Khởi chạy OGK-Agent Service (Standalone Mode)..." -ForegroundColor Green
+        Write-Host ">>> Khởi chạy EC Agent Service (Standalone Mode)..." -ForegroundColor Green
         & $PythonExe -m agent.service.win_service run
     }
 
     "tray" {
-        Write-Host ">>> Khởi chạy OGK-Tray UI (Giao diện khay hệ thống)..." -ForegroundColor Green
+        Write-Host ">>> Khởi chạy EC Tray UI (Giao diện khay hệ thống)..." -ForegroundColor Green
         & $PythonExe -m agent.ui.tray_app
     }
 

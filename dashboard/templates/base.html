@@ -3,10 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#2f7d63">
-  <title>{% block title %}OGK - Open Guardian for Kids{% endblock %}</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%232f7d63%27/%3E%3Cpath d=%27M9 16.5l4.5 4.5L23 11.5%27 stroke=%27white%27 stroke-width=%273.2%27 fill=%27none%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#f5f6f8">
+  <title>{% block title %}{{ app_name }}{% endblock %}</title>
+  <link rel="icon" href="/static/echo-kiddo.svg" type="image/svg+xml">
+  <script src="/static/preferences.js"></script>
   <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/preferences.css">
+  <script defer src="/static/english.js"></script>
+  <script defer src="/static/info.js"></script>
   <script defer src="/static/app.js"></script>
   {% block extra_head %}{% endblock %}
 </head>
@@ -39,42 +43,61 @@
     <symbol id="i-camera-off" viewBox="0 0 24 24"><path d="M4 4l16 16"/><path d="M9 6h6l1.5 2H19a1 1 0 0 1 1 1v8M17 19H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h1"/><circle cx="12" cy="13" r="3"/></symbol>
     <symbol id="i-chat-off" viewBox="0 0 24 24"><path d="M4 4l16 16"/><path d="M8 5h11a1 1 0 0 1 1 1v10M17 17H9l-5 4V8"/></symbol>
     <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M4 4l16 16"/><path d="M9.5 6.3A9 9 0 0 1 12 6c5 0 8.5 6 8.5 6a14 14 0 0 1-2.4 3M15 15.6A5.5 5.5 0 0 1 12 18c-5 0-8.5-6-8.5-6a14 14 0 0 1 3.2-3.7"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></symbol>
+    <symbol id="i-switch-account" viewBox="0 0 24 24"><path d="M4 8h15m-4-4 4 4-4 4M20 16H5m4-4-4 4 4 4"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="m10 7 5 5-5 5"/></symbol>
   </svg>
 
-  <header class="topbar">
-    <div class="topbar-inner">
-      <a href="/dashboard" class="brand" aria-label="OGK, Open Guardian for Kids">
-        <span class="brand-mark" aria-hidden="true">OGK</span>
-        <span class="brand-text">
-          <span class="brand-name">Open Guardian for Kids</span>
-          <span class="brand-sub">Công cụ đồng hành, minh bạch và đồng thuận</span>
-        </span>
+  <div class="app">
+    <header class="topbar">
+      <a href="{{ '/dashboard' if current_user and (current_user.session_role or current_user.role) in ['parent', 'admin'] else '/child-view' }}" class="brand" aria-label="{{ app_name }}">
+        <img class="brand-mark" src="/static/echo-kiddo.svg" width="32" height="32" alt="">
+        {% set brand_prefix, brand_separator, brand_name = app_name.partition(" - ") %}
+        <span class="brand-name">{{ brand_prefix }}{{ brand_separator }}<span>{{ brand_name }}</span></span>
       </a>
-      <nav class="mainnav" aria-label="Điều hướng chính">
+      <div class="topbar-center">{% block topbar_center %}{% endblock %}</div>
+      <div class="topbar-actions no-print">{% block topbar_actions %}{% endblock %}</div>
+      <nav class="iconnav no-print" aria-label="Điều hướng chính">
+        <button class="themebtn" id="themeBtn" type="button" role="switch" aria-checked="false" aria-label="Giao diện tối"><span class="tt-sky" aria-hidden="true"><i class="tt-star" style="left:10px;top:7px"></i><i class="tt-star" style="left:19px;top:20px;transform:scale(.7)"></i><i class="tt-star" style="left:26px;top:9px;transform:scale(.55)"></i><i class="tt-cloud" style="right:6px;bottom:4px"></i><i class="tt-cloud" style="right:15px;bottom:-3px;transform:scale(.8)"></i></span><span class="tt-knob" aria-hidden="true"><i></i><i></i><i></i></span></button>
+        <button class="langtog" id="langBtn" type="button" aria-label="English / Tiếng Việt" data-lang="vi"><i class="lt-thumb" aria-hidden="true"></i><span lang="en">EN</span><span lang="vi">VI</span></button>
         {% if current_user %}
           {% if (current_user.session_role or current_user.role) in ['parent', 'admin'] %}
-            <a href="/dashboard" {% if active_nav == 'dashboard' %}aria-current="page"{% endif %} title="Bảng điều khiển"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span>Bảng điều khiển</span></a>
+            {% include "_account_menu.html" %}
           {% endif %}
-          <a href="/child-view" {% if active_nav == 'child' %}aria-current="page"{% endif %} title="Màn hình của con"><svg class="icon" aria-hidden="true"><use href="#i-child"/></svg><span>Màn hình của con</span></a>
-          <a href="/audit/view" {% if active_nav == 'audit' %}aria-current="page"{% endif %} title="Nhật ký"><svg class="icon" aria-hidden="true"><use href="#i-list"/></svg><span>Nhật ký</span></a>
-          <a href="/logout" title="Đăng xuất"><svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg><span>Đăng xuất</span></a>
+          <div class="account-shortcuts">
+          <a href="/child-view" class="icon-btn" {% if active_nav == 'child' %}aria-current="page"{% endif %} title="Màn hình của con"><svg class="icon" aria-hidden="true"><use href="#i-child"/></svg><span class="sr-only">Màn hình của con</span></a>
+          <a href="/audit/view" class="icon-btn" {% if active_nav == 'audit' %}aria-current="page"{% endif %} title="Nhật ký"><svg class="icon" aria-hidden="true"><use href="#i-list"/></svg><span class="sr-only">Nhật ký</span></a>
+          <a href="/logout" class="icon-btn" title="Đăng xuất"><svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg><span class="sr-only">Đăng xuất</span></a>
+          </div>
         {% else %}
-          <a href="/child-view" {% if active_nav == 'child' %}aria-current="page"{% endif %} title="Màn hình của con"><svg class="icon" aria-hidden="true"><use href="#i-child"/></svg><span>Màn hình của con</span></a>
-          <a href="/login" {% if active_nav == 'login' %}aria-current="page"{% endif %} title="Đăng nhập"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span>Đăng nhập</span></a>
+          <a href="/child-view" class="icon-btn" {% if active_nav == 'child' %}aria-current="page"{% endif %} title="Màn hình của con"><svg class="icon" aria-hidden="true"><use href="#i-child"/></svg><span class="sr-only">Màn hình của con</span></a>
+          <a href="/login" class="pill-link" {% if active_nav == 'login' %}aria-current="page"{% endif %}><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>Đăng nhập</a>
         {% endif %}
       </nav>
-    </div>
-  </header>
+    </header>
 
-  <main class="page {% block page_class %}{% endblock %}">
-    {% block content %}{% endblock %}
-  </main>
-
-  <footer class="footer">
-    <div class="footer-inner">
-      OGK là công cụ đồng hành, không phải phần mềm theo dõi lén. Không có chế độ ẩn. Chỉ dùng cho cha mẹ hoặc người giám hộ hợp pháp trên máy của con mình, theo Nghị định 13/2023/NĐ-CP.
+    <div class="app-body">
+      {% block rail %}
+        {% if current_user %}
+          <nav class="rail workspace-nav no-print" aria-label="Các trang">
+            {% if (current_user.session_role or current_user.role) in ['parent', 'admin'] %}
+              <a href="/dashboard" class="rail-item" {% if active_nav == 'dashboard' %}aria-current="page"{% endif %} title="Bảng điều khiển"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span class="rail-label">Bảng điều khiển</span></a>
+            {% endif %}
+            <a href="/child-view" class="rail-item" {% if active_nav == 'child' %}aria-current="page"{% endif %} title="Màn hình của con"><svg class="icon" aria-hidden="true"><use href="#i-child"/></svg><span class="rail-label">Màn hình của con</span></a>
+            <a href="/audit/view" class="rail-item" {% if active_nav == 'audit' %}aria-current="page"{% endif %} title="Nhật ký"><svg class="icon" aria-hidden="true"><use href="#i-list"/></svg><span class="rail-label">Nhật ký</span></a>
+            <a href="/logout" class="rail-item workspace-logout" title="Đăng xuất"><svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg><span class="rail-label">Đăng xuất</span></a>
+          </nav>
+        {% endif %}
+      {% endblock %}
+      <main class="page {% block page_class %}{% endblock %}">
+        {% block content %}{% endblock %}
+      </main>
     </div>
-  </footer>
+
+    <footer class="footer">
+      {{ app_name }} là công cụ đồng hành, không phải phần mềm theo dõi lén. Không có chế độ ẩn. Chỉ dùng cho cha mẹ hoặc người giám hộ hợp pháp trên máy của con mình, theo Nghị định 13/2023/NĐ-CP.
+    </footer>
+  </div>
 
   <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
   {% block extra_scripts %}{% endblock %}

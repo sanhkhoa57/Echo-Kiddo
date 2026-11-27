@@ -1,5 +1,5 @@
-"""Demo Seeder Script for OGK (Open Guardian for Kids).
-Seeds realistic demo data into OGK-Server database:
+"""Demo Seeder Script for EC - Echo Kiddo.
+Seeds realistic demo data into EC Server database:
 - Parent user (parent@ogk.local / AdminPassword123!)
 - Child profile (Bé Minh, age 6-11)
 - Paired Windows 11 device (PC-MINH-WIN11)
@@ -40,7 +40,7 @@ from server.services.policy_service import sign_policy_payload
 
 def seed_demo_data():
     print("==================================================")
-    print("      OGK Demo Data Seeder (Open Guardian)        ")
+    print("      EC - Echo Kiddo Demo Data Seeder        ")
     print("==================================================")
 
     # Initialize tables

@@ -1,4 +1,4 @@
-"""Lab Environment Setup & TLS Certificate Generator for OGK (Open Guardian for Kids).
+"""Lab Environment Setup & TLS Certificate Generator for EC - Echo Kiddo.
 
 Generates self-signed TLS certificates with SAN for localhost and LAN IP,
 computes the SHA-256 fingerprint for Agent Certificate Pinning,
@@ -148,7 +148,7 @@ def run_demo_seeder() -> None:
 
 def main() -> None:
     print("=" * 65)
-    print("     OGK LAB SETUP: TẠO CHỨNG CHỈ TLS & KHỞI TẠO MÔI TRƯỜNG LAB    ")
+    print("     EC - Echo Kiddo LAB SETUP: TẠO CHỨNG CHỈ TLS & KHỞI TẠO MÔI TRƯỜNG LAB    ")
     print("=" * 65)
 
     crt_path, key_path, fp = generate_self_signed_cert()
@@ -164,7 +164,7 @@ def main() -> None:
     print("=" * 65)
     print("         HƯỚNG DẪN KHỞI CHẠY PHÒNG LAB (LOCAL / LAN)             ")
     print("=" * 65)
-    print("1. KHỞI CHẠY OGK-SERVER (HTTPS + WSS trên cổng 8000):")
+    print("1. KHỞI CHẠY EC Server (HTTPS + WSS trên cổng 8000):")
     print(f"   .venv\\Scripts\\uvicorn server.main:app --host 0.0.0.0 --port 8000 --ssl-keyfile certs/server.key --ssl-certfile certs/server.crt")
     print()
     print("   Truy cập Web Dashboard:")
@@ -174,13 +174,13 @@ def main() -> None:
     print("   • Tài khoản: parent@ogk.local")
     print("   • Mật khẩu:  AdminPassword123!")
     print()
-    print("2. KHỞI CHẠY OGK-AGENT (Có Certificate Pinning & WSS):")
+    print("2. KHỞI CHẠY EC Agent (Có Certificate Pinning & WSS):")
     print(f"   set OGK_SERVER_URL=https://127.0.0.1:8000")
     print(f"   set OGK_CA_CERT=certs/server.crt")
     print(f"   set OGK_PINNED_CERT_FINGERPRINT={fp}")
     print("   .venv\\Scripts\\python -m agent.service.win_service run")
     print()
-    print("3. KHỞI CHẠY OGK-TRAY UI (Giao diện khay hệ thống của trẻ):")
+    print("3. KHỞI CHẠY EC Tray UI (Giao diện khay hệ thống của trẻ):")
     print("   .venv\\Scripts\\python -m agent.ui.tray_app")
     print()
     print("4. HOÀN NGUYÊN & GỠ BỎ SẠCH SẼ (Clean Recovery):")

@@ -1,0 +1,39 @@
+{% set profile = current_user.profile %}
+{% set logout_token = generate_csrf_token(current_user.id) %}
+<details class="account-menu" id="accountMenu" data-dropdown>
+  <summary class="account-menu-trigger" aria-label="Tài khoản của tôi">
+    <span class="avatar{% if profile %} avatar-{{ profile.avatar_color }}{% endif %}" aria-hidden="true">
+      {% if current_user.profile_details and current_user.profile_details.avatar_key %}
+        <img class="avatar-photo" src="/account/avatar/{{ current_user.profile_details.avatar_key }}" alt="">
+      {% else %}
+        {{ profile.initials if profile else current_user.email[:2]|upper }}
+      {% endif %}
+    </span>
+    <svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg>
+  </summary>
+  <div class="account-menu-panel">
+    <div class="account-menu-identity" translate="no">
+      {% if profile %}
+        <strong>{{ profile.display_name }}</strong>
+        <span>{{ current_user.email }}</span>
+      {% else %}
+        <strong>{{ current_user.email }}</strong>
+      {% endif %}
+    </div>
+    <a class="account-menu-action" href="/account"{% if active_nav == 'account' %} aria-current="page"{% endif %}>
+      <svg class="icon" aria-hidden="true"><use href="#i-child"/></svg>Hồ sơ
+    </a>
+    <form method="post" action="/logout?switch_account=1">
+      <input type="hidden" name="csrf_token" value="{{ logout_token }}">
+      <button class="account-menu-action" type="submit">
+        <svg class="icon" aria-hidden="true"><use href="#i-switch-account"/></svg>Chuyển đổi tài khoản
+      </button>
+    </form>
+    <form method="post" action="/logout">
+      <input type="hidden" name="csrf_token" value="{{ logout_token }}">
+      <button class="account-menu-action account-menu-logout" type="submit">
+        <svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg>Đăng xuất tài khoản
+      </button>
+    </form>
+  </div>
+</details>

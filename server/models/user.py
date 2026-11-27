@@ -25,6 +25,8 @@ class User(Base):
     # Relationships
     children: Mapped[list["Child"]] = relationship("Child", back_populates="parent", cascade="all, delete-orphan")
     pairing_codes: Mapped[list["PairingCode"]] = relationship("PairingCode", back_populates="parent", cascade="all, delete-orphan")
+    profile: Mapped["AccountProfile | None"] = relationship("AccountProfile", cascade="all, delete-orphan")
+    profile_details: Mapped["AccountProfileDetails | None"] = relationship("AccountProfileDetails", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, email={self.email}, role={self.role})>"

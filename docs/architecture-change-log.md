@@ -1,6 +1,6 @@
 # Nhật Ký Thay Đổi Kiến Trúc, Truy Vết Yêu Cầu & Kiểm Toán Nhất Quán (Architecture Change Log & Traceability)
 
-> **Tài liệu thuộc bộ đặc tả kiến trúc dự án OGK (Open Guardian for Kids)**
+> **Tài liệu thuộc bộ đặc tả kiến trúc dự án EC - Echo Kiddo**
 > - [Kiến trúc hệ thống (architecture.md)](./architecture.md)
 > - [Đặc tả chức năng (functional-specification.md)](./functional-specification.md)
 > - [Đặc tả kỹ thuật (technical-specification.md)](./technical-specification.md)
@@ -25,7 +25,7 @@
 
 ## 1. Tóm Tắt Thay Đổi So Với Phiên Bản Cơ Sở (Executive Change Summary)
 
-Quá trình phân tích và tổng hợp kiến trúc đã đối chiếu **Đề bài của Giảng viên (`DoAn01.docx`)**, **Định hướng dự án hiện tại (`OGK-Agent` + `OGK-Server`)** và **Ứng dụng tham khảo (`Safe Kids v5.1.27` — Huy An Phát)**. Phiên bản kiến trúc mới bảo toàn **100% yêu cầu bắt buộc và ngăn xếp công nghệ Python/FastAPI**, đồng thời tích hợp có chọn lọc các cơ chế bảo vệ hệ thống và khôi phục an toàn từ ứng dụng tham khảo để lấp đầy các khoảng trống kỹ thuật khi triển khai thực tế trên Windows 10/11.
+Quá trình phân tích và tổng hợp kiến trúc đã đối chiếu **Đề bài của Giảng viên (`DoAn01.docx`)**, **Định hướng dự án hiện tại (`EC Agent` + `EC Server`)** và **Ứng dụng tham khảo (`Safe Kids v5.1.27` — Huy An Phát)**. Phiên bản kiến trúc mới bảo toàn **100% yêu cầu bắt buộc và ngăn xếp công nghệ Python/FastAPI**, đồng thời tích hợp có chọn lọc các cơ chế bảo vệ hệ thống và khôi phục an toàn từ ứng dụng tham khảo để lấp đầy các khoảng trống kỹ thuật khi triển khai thực tế trên Windows 10/11.
 
 ---
 
@@ -35,7 +35,7 @@ Quá trình phân tích và tổng hợp kiến trúc đã đối chiếu **Đ�
 |---|---|---|
 | **1. Triết lý cốt lõi & Quyền riêng tư** | *"Công cụ đồng hành, không phải phần mềm theo dõi lén"*; không có chế độ ẩn; lược đồ sự kiện chỉ gồm đúng 7 trường (`ts, device_id, child_id, type, subject, duration_sec, policy_id`), trong đó `subject` không lưu URL đầy đủ. | Yêu cầu bắt buộc của giảng viên (Mục F3, F5). |
 | **2. Ngăn xếp công nghệ (Technology Stack)** | Python 3.11+ (x64), FastAPI, Uvicorn, SQLite (WAL mode), SQLAlchemy, `pywin32`, `psutil`, giao diện Web Dashboard dùng được trên điện thoại. | Quyết định công nghệ đã được xác nhận trong `DoAn01.docx` (không chuyển sang C#/.NET của ứng dụng tham khảo). |
-| **3. Mô hình kiến trúc Phân tán** | `OGK-Agent` (Service `LocalSystem` + `Tray UI` quyền User) giao tiếp với `OGK-Server` qua HTTPS (TLS 1.2+ kèm Certificate Pinning) và WebSocket (lệnh khẩn $< 5\text{s}$). | Yêu cầu bắt buộc tại Mục 4.1, 4.2, 4.3 (ứng dụng tham khảo chỉ chạy cục bộ, không có Server từ xa). |
+| **3. Mô hình kiến trúc Phân tán** | `EC Agent` (Service `LocalSystem` + `Tray UI` quyền User) giao tiếp với `EC Server` qua HTTPS (TLS 1.2+ kèm Certificate Pinning) và WebSocket (lệnh khẩn $< 5\text{s}$). | Yêu cầu bắt buộc tại Mục 4.1, 4.2, 4.3 (ứng dụng tham khảo chỉ chạy cục bộ, không có Server từ xa). |
 | **4. Cơ chế lọc tên miền chính** | Sử dụng **DNS Proxy cục bộ tại `127.0.0.1:53`** hỗ trợ chặn tên miền gốc, tên miền con (`*.domain`), phân loại 6 nhóm ($\ge 200$ mục) và cưỡng chế SafeSearch. | Yêu cầu bắt buộc tại Mục 4.1, F2 và M1. |
 | **5. Toàn bộ yêu cầu chức năng F1–F5 & báo cáo M1–M6** | Giữ nguyên mọi tiêu chí nghiệm thu của F1–F5, 6 chuyên đề mạng M1–M6 và danh mục sản phẩm phải nộp ở Mục 8. | Quy định chấm điểm bắt buộc của giảng viên. |
 
@@ -55,7 +55,7 @@ Quá trình phân tích và tổng hợp kiến trúc đã đối chiếu **Đ�
 
 ## 4. Các Cơ Chế Kỹ Thuật Được Bổ Sung Từ Ứng Dụng Tham Khảo (Added Features)
 
-| Cơ chế bổ sung | Nguồn tham khảo | Mô-đun tiếp nhận trong `OGK` | Lý do bổ sung |
+| Cơ chế bổ sung | Nguồn tham khảo | Mô-đun tiếp nhận trong `EC - Echo Kiddo` | Lý do bổ sung |
 |---|---|---|---|
 | **1. Tự động khởi chạy & giám sát `Tray UI` qua WTS API (`WTSEnumerateSessions` + `CreateProcessAsUser`)** | `SafeKids.Service.Sessions.SessionAgentLauncher` (`REF-01`) | `/agent/service/session_launcher.py` | Giải quyết bài toán Session 0 Isolation của Windows Service, tự bật lại `Tray UI` trong $\le 3\text{s}$ nếu bị tắt, và dừng cưỡng chế nếu không thể hiển thị biểu tượng (tuân thủ F5). |
 | **2. Snapshot & Khôi phục cấu hình DNS Card mạng + `DnsFlushResolverCache()`** | `SafeKids.Platform.Network.LegacyDnsRecoveryManager` & `WindowsDnsCache` (`REF-07`, `REF-10`) | `/agent/platform/network_guard.py` | Đảm bảo khi trỏ DNS về `127.0.0.1` có hiệu lực ngay lập tức, chống trẻ đổi DNS sang `8.8.8.8`, và khôi phục lại đúng DHCP/IP tĩnh ban đầu khi dừng dịch vụ. |
@@ -80,7 +80,7 @@ Quá trình phân tích và tổng hợp kiến trúc đã đối chiếu **Đ�
 
 | Mô-đun / Tài liệu | Mức độ tác động | Nội dung cập nhật tương ứng |
 |---|---|---|
-| **`docs/architecture.md`** | Tạo mới toàn diện | Hợp nhất sơ đồ tổng thể `OGK-Agent` + `OGK-Server` + `Dashboard` với kiến trúc 5 tầng, luồng dữ liệu, mô hình ER và 3 quyết định kiến trúc (ADR-01 $\rightarrow$ ADR-03). |
+| **`docs/architecture.md`** | Tạo mới toàn diện | Hợp nhất sơ đồ tổng thể `EC Agent` + `EC Server` + `Dashboard` với kiến trúc 5 tầng, luồng dữ liệu, mô hình ER và 3 quyết định kiến trúc (ADR-01 $\rightarrow$ ADR-03). |
 | **`docs/functional-specification.md`** | Tạo mới toàn diện | Đặc tả 39 yêu cầu chức năng có mã định danh (`FR-LC-01` $\rightarrow$ `FR-F5-09`), 6 Use Cases cốt lõi, 12 User Stories, quy tắc nghiệp vụ và tiêu chí nghiệm thu. |
 | **`docs/technical-specification.md`** | Tạo mới toàn diện | Đặc tả chi tiết cấu trúc thư mục, giao thức `IpcEnvelope`, lược đồ SQLite (`server.db` & `agent.db`), REST API, WebSocket và giải pháp kỹ thuật cho M1–M6. |
 | **`docs/feature-comparison.md`** | Tạo mới toàn diện | Phân tích 22 tính năng của `Safe Kids v5.1.27` theo 9 tiêu chí và phân loại `ADOPT` / `ADAPT` / `DEFER` / `REJECT`. |
@@ -94,7 +94,7 @@ Bảng dưới đây chứng minh **100% yêu cầu bắt buộc và mở rộng
 
 | Requirement ID | Original Requirement (`DoAn01.docx`) | Updated Specification (`functional-specification.md` & `technical-specification.md`) | Architecture Component (`architecture.md`) | Status |
 |---|---|---|---|---|
-| **REQ-ARCH-01** | **4.1 & 4.2**: Kiến trúc `OGK-Agent` (Service `LocalSystem` + `Tray UI` quyền user), `OGK-Server` (FastAPI + SQLite WAL), `Dashboard` (Web di động), kho cục bộ `ProgramData` (ACL SYSTEM/Admins). | Mục 3, 4, 5 trong `architecture.md`; `FR-F5-07`, `FR-F5-09`; Mục 2 & 4.2 trong `technical-specification.md`. | `OGKWindowsService`, `SessionAgentLauncher`, `TrayUI`, `FastAPIServer`, `LocalSQLiteStore`, `WebDashboard` | **Preserved & Enhanced** |
+| **REQ-ARCH-01** | **4.1 & 4.2**: Kiến trúc `EC Agent` (Service `LocalSystem` + `Tray UI` quyền user), `EC Server` (FastAPI + SQLite WAL), `Dashboard` (Web di động), kho cục bộ `ProgramData` (ACL SYSTEM/Admins). | Mục 3, 4, 5 trong `architecture.md`; `FR-F5-07`, `FR-F5-09`; Mục 2 & 4.2 trong `technical-specification.md`. | `OGKWindowsService`, `SessionAgentLauncher`, `TrayUI`, `FastAPIServer`, `LocalSQLiteStore`, `WebDashboard` | **Preserved & Enhanced** |
 | **REQ-LC-01** | **4.3**: Ghép đôi (enrollment) bằng mã 8 ký tự có hạn 10 phút; gửi kèm device fingerprint; trả `device_id` và cặp token; ghi nhận đồng ý theo NĐ 13/2023. | `FR-LC-01`, `UC-01`, `POST /api/v1/enroll/code` & `POST /api/v1/enroll`. | `EnrollmentMod` (`Server`), `SyncClient` (`Agent`), Bảng `pairing_codes` & `devices` | **Preserved** |
 | **REQ-LC-02** | **4.3**: Nhịp tim (heartbeat) 60 giây: gửi trạng thái, quota đã dùng, `policy_version`; lệch phiên bản thì gọi `GET /policy`. | `FR-LC-02`, `POST /api/v1/heartbeat`, `GET /api/v1/policy`. | `SyncClient` (`Agent`), `CommandMod` & `PolicyMod` (`Server`) | **Preserved** |
 | **REQ-LC-03** | **4.3**: Lệnh khẩn qua WebSocket: khóa ngay, mở khóa, cộng thêm 15 phút — độ trễ $< 5\text{ giây}$. | `FR-LC-03`, `FR-F4-02`, `UC-02`, `WS /ws/agent/{device_id}`. | `CommandMod` (`Server`), `SyncClient` & `ScreenTimer` (`Agent`) | **Preserved** |
@@ -130,7 +130,7 @@ Bảng dưới đây chứng minh **100% yêu cầu bắt buộc và mở rộng
 | **1** | **Có yêu cầu chức năng nào của giảng viên bị bỏ sót không?** | **KHÔNG (Đạt 100%)** | Toàn bộ các mục 4.1, 4.2, 4.3, F1, F2, F3, F4, F5 (cả mức BẮT BUỘC, NÊN CÓ, CÓ THÌ TỐT) và M1–M6 trong `DoAn01.docx` đều có mặt trong `functional-specification.md` và bảng RTM ở Mục 7. |
 | **2** | **Có tính năng nào được thêm nhưng không có lý do không?** | **KHÔNG** | Mọi tính năng `ADOPT` (7 mục) và `ADAPT` (8 mục) từ `Safe Kids v5.1.27` đều được giải trình rõ theo 9 tiêu chí trong `feature-comparison.md` và gắn trực tiếp với một yêu cầu trong `DoAn01.docx`. Các tính năng không phù hợp (`REF-19` $\rightarrow$ `REF-22`) đã bị `REJECT` dứt khoát. |
 | **3** | **Có mô-đun nào không có trách nhiệm rõ ràng không?** | **KHÔNG** | Mục 5 của `architecture.md` và Mục 2 của `technical-specification.md` định nghĩa rõ trách nhiệm, đường dẫn tệp và giao diện đầu vào/đầu ra cho từng mô-đun trong `/agent`, `/server` và `/dashboard`. |
-| **4** | **Có thành phần nào được mô tả khác nhau giữa các tài liệu không?** | **KHÔNG (Nhất quán 100%)** | Tên gọi thành phần (`OGK-Agent`, `OGK-Service`, `OGK-Tray`, `OGK-Server`, `Web Dashboard`, `IpcEnvelope`, `system_snapshots`), các thông số thời gian (Heartbeat `60s`, WebSocket `< 5s`, Idle `> 5p`, Cảnh báo `10/5/1p`, Ân hạn `60s`, Chính sách hết hạn `N = 7 ngày`, Lưu trữ `90 ngày`, Khóa đăng nhập `15p sau 5 lần sai`) và lược đồ 7 trường sự kiện hoàn toàn khớp nhau trên cả 5 tệp tài liệu. |
+| **4** | **Có thành phần nào được mô tả khác nhau giữa các tài liệu không?** | **KHÔNG (Nhất quán 100%)** | Tên gọi thành phần (`EC Agent`, `EC Service`, `EC Tray`, `EC Server`, `Web Dashboard`, `IpcEnvelope`, `system_snapshots`), các thông số thời gian (Heartbeat `60s`, WebSocket `< 5s`, Idle `> 5p`, Cảnh báo `10/5/1p`, Ân hạn `60s`, Chính sách hết hạn `N = 7 ngày`, Lưu trữ `90 ngày`, Khóa đăng nhập `15p sau 5 lần sai`) và lược đồ 7 trường sự kiện hoàn toàn khớp nhau trên cả 5 tệp tài liệu. |
 | **5** | **Có xung đột giữa kiến trúc và ngăn xếp công nghệ (Technology Stack) không?** | **KHÔNG** | Dù ứng dụng tham khảo viết bằng C#/.NET (WPF), kiến trúc tổng hợp đã ánh xạ toàn bộ các cơ chế hệ thống sang các thư viện chuẩn của **Python 3.11+** (`pywin32`, `psutil`, `winreg`, `ctypes.windll.dnsapi`, `dnslib`, `asyncio`, `FastAPI`, `SQLite WAL`, `SQLAlchemy`). |
 | **6** | **Có chức năng nào vượt quá phạm vi đồ án không?** | **KHÔNG** | Các tính năng ngoài phạm vi hoặc vi phạm quyền riêng tư của ứng dụng tham khảo (chụp màn hình, tiện ích mở rộng trình duyệt đọc DOM, khóa ổ đĩa, két dữ liệu, bản quyền thương mại) đã bị loại bỏ hoàn toàn. |
 | **7** | **Có yêu cầu nào không khả thi với nguồn lực hiện tại (03 sinh viên / 06 tuần) không?** | **KHÔNG (Hoàn toàn khả thi)** | Các thành phần phức tạp ở mức Kernel (như WFP Driver C/C++) không bắt buộc; phương án chính là User-mode DNS Proxy (`127.0.0.1:53`) bằng `dnslib` + `asyncio` kết hợp Registry Policy và `psutil`/`pywin32`, hoàn toàn nằm trong tầm tay của 3 sinh viên đại học trong 6 tuần. |
@@ -146,7 +146,7 @@ Bảng dưới đây chứng minh **100% yêu cầu bắt buộc và mở rộng
 |---|---|---|
 | **Tuần 1** | Khởi tạo dự án, CSDL SQLite WAL, Xác thực Argon2id, Ghép đôi 8 ký tự, Khung Windows Service + Named Pipe `IpcEnvelope`. | - **SV1**: Khung FastAPI, Auth Argon2id, Enrollment API.<br>- **SV2**: `OGKWindowsService`, `SessionAgentLauncher`, `PipeProtocol`.<br>- **SV3**: Thiết kế bộ 200+ tên miền phân loại an toàn & 50 tên miền kiểm thử. |
 | **Tuần 2** | Đếm thời gian thực (`time.monotonic()` + Idle $>5\text{p}$), Ma trận lịch tuần $7 \times 48$, DNS Proxy `127.0.0.1:53` + SafeSearch. | - **SV1**: API `/policy` (kèm chữ ký HMAC) & `/heartbeat`.<br>- **SV2**: `ScreenTimeEngine`, `AppController` (SHA-256 + `OriginalFileName`).<br>- **SV3**: `DnsProxyServer` (`127.0.0.1:53`), `DomainPolicyEngine`, SafeSearch. |
-| **Tuần 3** | Lệnh khẩn WebSocket ($< 5\text{s}$), Hàng đợi sự kiện Offline + Idempotent Batch Sync, Giao diện `OGK-Tray` (cảnh báo 10/5/1p + ân hạn 60s). | - **SV1**: WebSocket Hub, API `/events/batch`, `/commands`, Audit Log.<br>- **SV2**: `TrayUI` (đồng hồ, cảnh báo, xin thêm giờ, màn hình minh bạch).<br>- **SV3**: Tích hợp `SyncClient` (HTTPS Cert Pinning + WSS). |
+| **Tuần 3** | Lệnh khẩn WebSocket ($< 5\text{s}$), Hàng đợi sự kiện Offline + Idempotent Batch Sync, Giao diện `EC Tray` (cảnh báo 10/5/1p + ân hạn 60s). | - **SV1**: WebSocket Hub, API `/events/batch`, `/commands`, Audit Log.<br>- **SV2**: `TrayUI` (đồng hồ, cảnh báo, xin thêm giờ, màn hình minh bạch).<br>- **SV3**: Tích hợp `SyncClient` (HTTPS Cert Pinning + WSS). |
 | **Tuần 4** | Hoàn thiện 100% `MUST HAVE`: Dashboard Phụ huynh & Màn hình minh bạch cho trẻ, Lưu trữ 90 ngày, Nút xóa toàn bộ dữ liệu. | - **SV1**: Giao diện Dashboard (Jinja2 + HTMX + Chart.js), Nút xóa dữ liệu.<br>- **SV2**: Hoàn thiện luồng khóa máy & mở khóa từ xa / PIN cục bộ.<br>- **SV3**: Viết $\ge 15$ Unit Tests & $\ge 5$ kịch bản tích hợp. |
 | **Tuần 5** | Triển khai nhóm `SHOULD HAVE`: Chống DoH (`BrowserPolicySnapshot`), Khóa DNS Card mạng (`NetworkDnsGuard`), Công cụ `ogk_cleanup.py`, Ngân sách nhóm ứng dụng, Xuất CSV/PDF. | - **SV1**: Xuất báo cáo CSV/PDF, Ngân sách theo nhóm ứng dụng.<br>- **SV2**: Quy trình gỡ cài đặt hợp pháp + `ogk_cleanup.py`.<br>- **SV3**: `NetworkDnsGuard`, `BrowserPolicyGuard`, `BypassDetector` & Đo đạc thực nghiệm M1–M6 (Wireshark, 30 mẫu hiệu năng). |
 | **Tuần 6** | Triển khai `COULD HAVE` (Tạm nghỉ 2h, Nhắc nghỉ mắt 20-20-20), Kiểm thử cài đặt sạch 15 phút theo `README.md`, Hoàn thiện báo cáo & Video demo. | - **Cả nhóm**: Hoàn thiện `BaoCao.docx`, `BaoCaoKyThuatMang.pdf`, `PRIVACY.md`, `THREATMODEL.md`, `AI_USAGE.md`, `README.md` và quay `demo/video.mp4`. |

@@ -1,4 +1,4 @@
-"""Main FastAPI Application for OGK-Server."""
+"""FastAPI application for EC - Echo Kiddo."""
 import asyncio
 import os
 from contextlib import asynccontextmanager
@@ -11,6 +11,8 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+
+from branding import APP_NAME
 
 from server.models.database import init_db, SessionLocal
 from server.auth.dependencies import limiter
@@ -59,7 +61,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="OGK Server API (Open Guardian for Kids)",
+    title=f"{APP_NAME} API",
     description="Centralized administration server for Open Guardian for Kids (Windows 10/11 x64)",
     version="1.0.0",
     lifespan=lifespan,

@@ -16,7 +16,7 @@ web
 
 ## Product Purpose
 
-OGK (Open Guardian for Kids) là đồ án môn Mạng Máy Tính: agent trên Windows 10/11 quản lý thời gian dùng máy, lọc ứng dụng và website qua DNS proxy cục bộ; máy chủ FastAPI phát hành chính sách có ký HMAC; dashboard web cho phụ huynh. Thành công nghĩa là thay đổi trên dashboard có hiệu lực trên máy trẻ trong 60 giây, lệnh khẩn trong 5 giây, và trẻ luôn thấy được hệ thống ghi nhận gì.
+EC - Echo Kiddo là đồ án môn Mạng Máy Tính: agent trên Windows 10/11 quản lý thời gian dùng máy, lọc ứng dụng và website qua DNS proxy cục bộ; máy chủ FastAPI phát hành chính sách có ký HMAC; dashboard web cho phụ huynh. Thành công nghĩa là thay đổi trên dashboard có hiệu lực trên máy trẻ trong 60 giây, lệnh khẩn trong 5 giây, và trẻ luôn thấy được hệ thống ghi nhận gì.
 
 ## Positioning
 
@@ -39,7 +39,7 @@ OGK (Open Guardian for Kids) là đồ án môn Mạng Máy Tính: agent trên W
 
 ## Brand Commitments
 
-- Tên: OGK, Open Guardian for Kids.
+- Tên: EC - Echo Kiddo, Open Guardian for Kids.
 - Giao diện và tài liệu bằng tiếng Việt.
 - Giọng: nói thẳng, bình tĩnh, không dọa nạt, không quảng cáo (giả định).
 

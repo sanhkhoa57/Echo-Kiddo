@@ -1,15 +1,21 @@
 """Web Dashboard and View Routers (Jinja2 Templates)."""
 import json
+import secrets
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Request, Form, Response, status
+from email_validator import EmailNotValidError, validate_email
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Form, Response, UploadFile, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+
+from branding import APP_NAME
 
 from server.models.database import get_db
+from server.models.account_profile import AccountProfile, AccountProfileDetails
 from server.models.user import User
 from server.models.child import Child
 from server.models.device import Device
@@ -32,6 +38,9 @@ from server.auth.dependencies import (
 from server.routers.heartbeat import LIVE_USAGE
 from server.routers.reports import build_child_report, local_tz
 from server.services.command_hub import command_hub
+from server.services.accounts import (
+    AVATAR_COLORS, EmailInUse, create_parent_account, find_account, prepare_avatar, valid_profile_phone,
+)
 from server.services.policy_service import create_default_policy_for_child
 
 SESSION_COOKIE_NAME = "ogk_session"
@@ -41,6 +50,8 @@ CLOCK_DRIFT_WARN_SEC = 120
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "dashboard" / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+templates.env.globals["generate_csrf_token"] = generate_csrf_token
+templates.env.globals["app_name"] = APP_NAME
 
 web_router = APIRouter(include_in_schema=False)
 
@@ -282,12 +293,12 @@ def index(request: Request, user: Optional[User] = Depends(get_current_user_opti
 
 
 @web_router.get("/login", response_class=HTMLResponse)
-def login_page(request: Request, error: Optional[str] = None):
+def login_page(request: Request, error: Optional[str] = None, registered: bool = False, switch_account: bool = False):
     csrf_token = generate_csrf_token("anon")
     response = templates.TemplateResponse(
         request,
         "login.html",
-        {"csrf_token": csrf_token, "error": error, "current_user": None},
+        {"csrf_token": csrf_token, "error": error, "registered": registered, "switch_account": switch_account, "current_user": None},
     )
     response.set_cookie(CSRF_COOKIE_NAME, csrf_token, httponly=False, samesite="lax")
     return response
@@ -298,6 +309,169 @@ def _login_csrf_ok(request: Request, csrf_token: str) -> bool:
     ogk_csrf cookie set when the login page was served."""
     cookie = request.cookies.get(CSRF_COOKIE_NAME) or ""
     return bool(csrf_token) and csrf_token == cookie and verify_csrf_token("anon", csrf_token)
+
+
+def _registration_form(request: Request, error: str = "", email: str = "", display_name: str = ""):
+    csrf_token = generate_csrf_token("anon")
+    response = templates.TemplateResponse(request, "register.html", {
+        "csrf_token": csrf_token, "error": error, "email": email, "display_name": display_name,
+    })
+    response.set_cookie(CSRF_COOKIE_NAME, csrf_token, httponly=False, samesite="lax", secure=request.url.scheme == "https")
+    return response
+
+
+@web_router.get("/register", response_class=HTMLResponse)
+def register_page(request: Request):
+    return _registration_form(request)
+
+
+@web_router.post("/register", response_class=HTMLResponse)
+@limiter.limit("5/minute")
+def register_submit(
+    request: Request,
+    display_name: str = Form(""),
+    email: str = Form(""),
+    password: str = Form(""),
+    password_confirmation: str = Form(""),
+    csrf_token: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not _login_csrf_ok(request, csrf_token):
+        return _registration_form(request, "Phiên đăng ký đã hết hạn. Vui lòng thử lại.")
+    display_name = " ".join(display_name.split())
+    email = email.strip()
+    if not 1 <= len(display_name) <= 60:
+        return _registration_form(request, "Tên hiển thị cần từ 1 đến 60 ký tự.", email[:255])
+    try:
+        email = validate_email(email, check_deliverability=False).normalized
+    except EmailNotValidError:
+        return _registration_form(request, "Vui lòng nhập địa chỉ email hợp lệ.", email[:255], display_name)
+    if not 10 <= len(password) <= 128:
+        return _registration_form(request, "Mật khẩu cần từ 10 đến 128 ký tự.", email, display_name)
+    if password != password_confirmation:
+        return _registration_form(request, "Hai mật khẩu chưa khớp.", email, display_name)
+    try:
+        create_parent_account(db, email, password, display_name)
+    except EmailInUse:
+        return _registration_form(request, "Email này đã có tài khoản. Bạn có thể đăng nhập.", email, display_name)
+    return RedirectResponse("/login?registered=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
+def _account_form(request: Request, user: User, *, error: str = "", saved: bool = False, draft: dict | None = None):
+    profile = user.profile
+    details = user.profile_details
+    fields = {
+        "display_name": profile.display_name if profile else "",
+        "avatar_color": profile.avatar_color if profile else "forest",
+        "email": user.email,
+        "phone": details.phone if details else "",
+    }
+    if draft:
+        fields.update(draft)
+    return templates.TemplateResponse(request, "account.html", {
+        "current_user": user, **fields, "profile_details": details,
+        "avatar_colors": AVATAR_COLORS, "csrf_token": generate_csrf_token(user.id), "error": error, "saved": saved,
+    })
+
+
+@web_router.get("/account", response_class=HTMLResponse)
+def account_page(request: Request, saved: bool = False, user: Optional[User] = Depends(get_current_user_optional)):
+    if not user or session_role(user) not in ("parent", "admin"):
+        return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
+    return _account_form(request, user, saved=saved)
+
+
+@web_router.get("/account/avatar/{avatar_key}")
+def account_avatar(avatar_key: str, user: Optional[User] = Depends(get_current_user_optional)):
+    if not user or session_role(user) not in ("parent", "admin"):
+        raise HTTPException(status_code=404)
+    details = user.profile_details
+    if not details or details.avatar_key != avatar_key or details.avatar_image is None:
+        raise HTTPException(status_code=404)
+    return Response(
+        details.avatar_image, media_type="image/jpeg",
+        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+    )
+
+
+@web_router.post("/account", response_class=HTMLResponse)
+@limiter.limit("12/minute")
+def account_submit(
+    request: Request,
+    display_name: str = Form(""),
+    avatar_color: str = Form("forest"),
+    csrf_token: str = Form(""),
+    email: Optional[str] = Form(None),
+    phone: Optional[str] = Form(None),
+    current_password: str = Form(""),
+    avatar: Optional[UploadFile] = File(None),
+    remove_avatar: bool = Form(False),
+    edit_contact: bool = Form(False),
+    user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
+):
+    if not user or session_role(user) not in ("parent", "admin"):
+        return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
+    if not verify_csrf_token(user.id, csrf_token):
+        return _account_form(request, user, error="Phiên chỉnh sửa đã hết hạn. Vui lòng thử lại.")
+    display_name = " ".join(display_name.split())
+    # FastAPI treats an empty optional form field as missing. Distinguish an empty
+    # phone from callers that submitted only the original profile fields.
+    details = user.profile_details
+    phone = (phone or "").strip() if edit_contact or phone is not None else (details.phone if details else "")
+    email = (email or "").strip() if edit_contact or email is not None else user.email
+    fields = {"display_name": display_name[:60], "avatar_color": avatar_color, "email": email[:254], "phone": phone[:32]}
+
+    def invalid(message: str):
+        return _account_form(request, user, error=message, draft=fields)
+
+    if not 1 <= len(display_name) <= 60 or avatar_color not in AVATAR_COLORS:
+        return invalid("Hãy nhập tên từ 1 đến 60 ký tự và chọn một màu ảnh đại diện.")
+    if not valid_profile_phone(phone):
+        return invalid("Số điện thoại cần có từ 7 đến 15 chữ số.")
+    if email.lower() != user.email.lower():
+        try:
+            email = validate_email(email, check_deliverability=False).normalized.lower()
+        except EmailNotValidError:
+            return invalid("Vui lòng nhập địa chỉ email hợp lệ.")
+        if not current_password or not verify_password(current_password, user.password_hash):
+            return invalid("Nhập đúng mật khẩu hiện tại để đổi email.")
+        existing = find_account(db, email)
+        if existing and existing.id != user.id:
+            return invalid("Email này đã được sử dụng.")
+    else:
+        email = user.email
+    try:
+        image = prepare_avatar(avatar.file) if avatar and avatar.filename else None
+    except ValueError as exc:
+        return invalid(str(exc))
+
+    user.email = email
+    profile = user.profile
+    if profile is None:
+        user.profile = AccountProfile(display_name=display_name, avatar_color=avatar_color)
+    else:
+        profile.display_name = display_name
+        profile.avatar_color = avatar_color
+    if details or phone or image is not None:
+        if details is None:
+            details = user.profile_details = AccountProfileDetails(phone=phone)
+        details.phone = phone
+        if image is not None:
+            details.avatar_image = image
+            details.avatar_key = secrets.token_hex(16)
+        elif remove_avatar:
+            details.avatar_image = None
+            details.avatar_key = None
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        existing = find_account(db, email)
+        if existing and existing.id != user.id:
+            return invalid("Email này đã được sử dụng.")
+        return invalid("Hồ sơ vừa thay đổi. Hãy kiểm tra thông tin và lưu lại.")
+    return RedirectResponse("/account?saved=1", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @web_router.post("/login")
@@ -313,7 +487,7 @@ def login_submit(
     if not _login_csrf_ok(request, csrf_token):
         return login_page(request, error="Phiên đăng nhập đã hết hạn. Vui lòng tải lại trang và thử lại.")
 
-    user = db.query(User).filter(User.email == email.lower().strip()).first()
+    user = find_account(db, email)
     if not user:
         return login_page(request, error="Tài khoản hoặc mật khẩu không chính xác.")
 
@@ -353,14 +527,32 @@ def login_submit(
     return redirect_resp
 
 
-@web_router.api_route("/logout", methods=["GET", "POST"])
-def logout(request: Request, db: Session = Depends(get_db)):
+def _clear_web_session(request: Request, db: Session, redirect_to: str, status_code: int):
     """Destroys the session on the server (jti revoked), not just in the browser."""
     revoke_session_token(db, request.cookies.get(SESSION_COOKIE_NAME))
-    resp = RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    resp = RedirectResponse(url=redirect_to, status_code=status_code)
     resp.delete_cookie(SESSION_COOKIE_NAME)
     resp.delete_cookie(CSRF_COOKIE_NAME)
     return resp
+
+
+@web_router.get("/logout")
+def logout(request: Request, db: Session = Depends(get_db)):
+    return _clear_web_session(request, db, "/login", status.HTTP_302_FOUND)
+
+
+@web_router.post("/logout")
+def logout_submit(
+    request: Request,
+    switch_account: bool = False,
+    csrf_token: str = Form(""),
+    user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
+):
+    if user and not verify_csrf_token(user.id, csrf_token):
+        raise HTTPException(status_code=403, detail="Phiên thao tác đã hết hạn. Vui lòng tải lại trang.")
+    destination = "/login?switch_account=1" if switch_account else "/login"
+    return _clear_web_session(request, db, destination, status.HTTP_303_SEE_OTHER)
 
 
 @web_router.get("/dashboard", response_class=HTMLResponse)

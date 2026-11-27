@@ -4,7 +4,6 @@ from datetime import datetime, timezone, timedelta
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from server.models.database import get_db
@@ -13,7 +12,6 @@ from server.models.device import Device
 from server.schemas.user import UserCreate, UserLogin, UserResponse
 from server.auth.security import (
     verify_password,
-    get_password_hash,
     create_jwt_token,
     decode_jwt_token,
     generate_csrf_token,
@@ -21,6 +19,7 @@ from server.auth.security import (
     DEVICE_TOKEN_EXPIRE_MINUTES,
 )
 from server.auth.dependencies import limiter, get_current_user, revoke_session_token
+from server.services.accounts import EmailInUse, create_parent_account, find_account
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 
@@ -51,28 +50,15 @@ def register_parent(
     db: Annotated[Session, Depends(get_db)],
 ):
     """Registers a new parent account with Argon2id password hashing."""
-    if len(payload.password) < 10:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Mật khẩu phụ huynh phải dài tối thiểu 10 ký tự.",
-        )
-
-    existing = db.scalar(select(User).where(User.email == payload.email))
-    if existing:
+    if payload.role.value != "parent":
+        raise HTTPException(status_code=403, detail="Chỉ có thể đăng ký tài khoản phụ huynh.")
+    try:
+        return create_parent_account(db, payload.email, payload.password)
+    except EmailInUse:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email này đã được sử dụng trong hệ thống.",
-        )
-
-    user = User(
-        email=payload.email,
-        password_hash=get_password_hash(payload.password),
-        role=payload.role.value,
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
+        ) from None
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -84,7 +70,7 @@ def login_parent(
     db: Annotated[Session, Depends(get_db)],
 ):
     """Parent login with 15-minute lockout after 5 consecutive failures and safe cookies."""
-    user = db.scalar(select(User).where(User.email == payload.email))
+    user = find_account(db, payload.email)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

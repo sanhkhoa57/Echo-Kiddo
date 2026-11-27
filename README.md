@@ -1,4 +1,4 @@
-# OGK (Open Guardian for Kids)
+# EC - Echo Kiddo
 
 > **"Công cụ đồng hành, không phải phần mềm theo dõi lén"**  
 > *A Transparent Companion, Not Stalkerware*  
@@ -8,8 +8,8 @@
 
 ## 1. Giới Thiệu Dự Án
 
-**OGK (Open Guardian for Kids)** là giải pháp toàn diện giúp phụ huynh và trẻ em cùng đồng hành, thiết lập thói quen sử dụng máy tính cân bằng, lành mạnh và an toàn:
-- **Minh bạch theo thiết kế (No Stealth Mode)**: Khay hệ thống `OGK-Tray` luôn hiển thị thời gian còn lại. Nếu khay hệ thống không hiển thị được sau 3 lần thử, `OGK-Service` tự động chuyển sang chế độ an toàn `UNPROTECTED_HALT` để không bao giờ hoạt động như phần mềm theo dõi lén.
+**EC - Echo Kiddo** là giải pháp toàn diện giúp phụ huynh và trẻ em cùng đồng hành, thiết lập thói quen sử dụng máy tính cân bằng, lành mạnh và an toàn:
+- **Minh bạch theo thiết kế (No Stealth Mode)**: Khay hệ thống `EC Tray` luôn hiển thị thời gian còn lại. Nếu khay hệ thống không hiển thị được sau 3 lần thử, `EC Service` tự động chuyển sang chế độ an toàn `UNPROTECTED_HALT` để không bao giờ hoạt động như phần mềm theo dõi lén.
 - **Tối thiểu hóa dữ liệu (Lược đồ sự kiện 7 trường F3)**: Chỉ lưu đúng 7 trường nghiệp vụ (`ts, device_id, child_id, type, subject, duration_sec, policy_id`). Trường `subject` chỉ lưu tên file thực thi hoặc tên miền cấp hai eTLD+1 (từ chối hoàn toàn đường dẫn URL chi tiết).
 - **Tuyệt đối không chụp màn hình / không DOM extension**: Tôn trọng quyền riêng tư của trẻ theo **Nghị định 13/2023/NĐ-CP** và **Luật Trẻ em 2016**.
 - **An toàn hệ thống (Snapshot & Clean Rollback)**: Toàn bộ can thiệp mạng (`127.0.0.1:53`) và Registry trình duyệt (`DnsOverHttpsMode=off`) đều chụp Snapshot vào `agent.db` và được hoàn trả sạch 100% khi dừng hoặc gỡ cài đặt.
@@ -21,8 +21,8 @@
 Tuân thủ nghiêm ngặt Mục 2 của `docs/technical-specification.md`:
 
 ```text
-ogk/
-├── agent/                       # OGK-Agent trên Windows 10/11 x64
+./
+├── agent/                       # EC Agent trên Windows 10/11 x64
 │   ├── cleanup/                 # Công cụ khôi phục sạch 100% (ogk_cleanup.py)
 │   ├── core/                    # Bộ đếm giờ, App Controller, Event Buffer, SQLite
 │   ├── dns/                     # DNS Proxy Server (UDP/TCP), Domain Engine, Suffix Trie
@@ -31,7 +31,7 @@ ogk/
 │   ├── service/                 # Windows Service (LocalSystem), SessionAgentLauncher (WTS)
 │   ├── sync/                    # Server Client (HTTPS Cert Pinning, WebSocket Command Hub)
 │   └── ui/                      # Khay hệ thống pystray + Tkinter UI
-├── server/                      # OGK-Server (FastAPI + SQLite WAL)
+├── server/                      # EC Server (FastAPI + SQLite WAL)
 │   ├── auth/                    # Argon2id, JWT, Anti-IDOR, CSRF Token
 │   ├── models/                  # SQLAlchemy 2.0 ORM (8 bảng CSDL)
 │   ├── migrations/              # Alembic (0001_initial_schema) + alembic.ini
@@ -114,7 +114,7 @@ python scripts/setup_lab.py
 
 ## 4. Vận Hành Hệ Thống
 
-### 4.1. Khởi Động Máy Chủ OGK-Server (Terminal 1)
+### 4.1. Khởi Động Máy Chủ EC Server (Terminal 1)
 ```powershell
 .\.venv\Scripts\Activate.ps1
 uvicorn server.main:app --host 127.0.0.1 --port 8000 --reload
@@ -125,7 +125,7 @@ Truy cập trình duyệt:
 - Nhật ký kiểm toán minh bạch (Audit Trail): `http://127.0.0.1:8000/audit/view`
 - Tài liệu tương tác API Swagger: `http://127.0.0.1:8000/docs`
 
-### 4.2. Khởi Động OGK-Agent (Terminal 2)
+### 4.2. Khởi Động EC Agent (Terminal 2)
 ```powershell
 .\.venv\Scripts\Activate.ps1
 python agent/service/win_service.py run

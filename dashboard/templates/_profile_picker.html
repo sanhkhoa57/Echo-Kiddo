@@ -1,0 +1,30 @@
+{% macro profile_picker(selected_child, children, route) %}
+{% macro icon(name) %}<svg class="icon" aria-hidden="true"><use href="#i-{{ name }}"/></svg>{% endmacro %}
+{% if selected_child %}
+  {% if children|length > 1 %}
+    <details class="child-picker" id="childPicker" data-dropdown>
+      <summary class="child-pill">
+        {{ icon('child') }}
+        <span class="sr-only">Đổi hồ sơ</span>
+        <span class="child-pill-name">{{ selected_child.display_name }}</span>
+        <span class="child-pill-age">{{ selected_child.age_group }} tuổi</span>
+        {{ icon('chevron') }}
+      </summary>
+      <nav class="child-picker-list" aria-label="Hồ sơ trẻ">
+        {% for c in children %}
+          {% set current = selected_child.id == c.id %}
+          <a class="child-picker-link" href="{{ route }}?child_id={{ c.id|urlencode }}"{% if current %} aria-current="page"{% endif %}>
+            <span class="child-picker-label">
+              <span class="child-picker-name">{{ c.display_name }}</span>
+              <span class="child-picker-age">{{ c.age_group }} tuổi</span>
+            </span>
+            {% if current %}{{ icon('check') }}{% endif %}
+          </a>
+        {% endfor %}
+      </nav>
+    </details>
+  {% else %}
+    <span class="child-pill">{{ icon('child') }}<span class="child-pill-name">{{ selected_child.display_name }}</span><span class="child-pill-age">{{ selected_child.age_group }} tuổi</span></span>
+  {% endif %}
+{% endif %}
+{% endmacro %}

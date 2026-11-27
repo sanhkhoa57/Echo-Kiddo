@@ -1,16 +1,53 @@
-/* OGK parent dashboard. Plain JavaScript, no dependencies. */
+/* EC - Echo Kiddo parent dashboard. Plain JavaScript, no dependencies. */
 (function () {
   "use strict";
 
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
 
-  const kidSelect = $("#kidSelect");
-  if (kidSelect) {
-    kidSelect.addEventListener("change", () => {
-      window.location.href = "/child-view?child_id=" + encodeURIComponent(kidSelect.value);
+  for (const dropdown of $$("[data-dropdown]")) {
+    const closeWhenOutside = (event) => {
+      if (dropdown.open && !dropdown.contains(event.target)) dropdown.open = false;
+    };
+    document.addEventListener("click", closeWhenOutside);
+    document.addEventListener("focusin", closeWhenOutside);
+    dropdown.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || !dropdown.open) return;
+      event.preventDefault();
+      dropdown.open = false;
+      dropdown.querySelector("summary").focus();
     });
   }
+
+  /* ---------- Weekly chart: one readout, chosen by tap/click/keyboard; Escape hides a hover preview ---------- */
+  const chartBars = $(".wchart-bars");
+  if (chartBars) {
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") chartBars.classList.add("tips-dismissed"); });
+    chartBars.addEventListener("pointerleave", () => chartBars.classList.remove("tips-dismissed"));
+    $$(".wbar", chartBars).forEach((bar) => bar.addEventListener("pointerleave", () => chartBars.classList.remove("tips-dismissed")));
+    chartBars.addEventListener("focusout", () => chartBars.classList.remove("tips-dismissed"));
+    // On narrow phones the 44 px columns overflow: fade the cut edge and add a swipe hint, only while that is true.
+    const weekCard = chartBars.closest(".area-week");
+    const syncOverflow = () => {
+      const over = chartBars.scrollWidth > chartBars.clientWidth + 1;
+      weekCard.classList.toggle("is-overflow", over);
+      weekCard.classList.toggle("at-end", !over || chartBars.scrollLeft + chartBars.clientWidth >= chartBars.scrollWidth - 2);
+    };
+    if (weekCard) {
+      syncOverflow();
+      chartBars.addEventListener("scroll", syncOverflow, { passive: true });
+      window.addEventListener("resize", syncOverflow);
+    }
+  }
+  $$(".wbar").forEach((bar) => bar.addEventListener("click", () => {
+    const on = bar.getAttribute("aria-pressed") !== "true";
+    $$(".wbar").forEach((b) => b.setAttribute("aria-pressed", "false"));
+    bar.setAttribute("aria-pressed", on ? "true" : "false");
+  }));
+
+  /* ---------- First-paint entrance: after this, .home stops replaying it ---------- */
+  const home = $(".home");
+  if (home) setTimeout(() => home.setAttribute("data-entered", ""), 1200);
 
   const bootElement = $("#boot");
   if (!bootElement) return;
@@ -57,18 +94,31 @@
 
   async function api(method, url, body) {
     let resp;
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), 15000);
     try {
       resp = await fetch(url, {
         method,
         credentials: "same-origin",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": boot.csrfToken },
         body: body === undefined ? undefined : JSON.stringify(body),
+        signal: abort.signal,
       });
     } catch (e) {
-      throw new Error("Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.");
+      clearTimeout(timer);
+      throw new Error(e.name === "AbortError"
+        ? "Máy chủ không phản hồi sau 15 giây. Chưa rõ yêu cầu đã được ghi nhận hay chưa, hãy tải lại trang để kiểm tra."
+        : "Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.");
     }
     let data = null;
-    try { data = await resp.json(); } catch (e) { /* empty body */ }
+    try {
+      data = await resp.json();
+    } catch (e) {
+      if (e.name === "AbortError") { clearTimeout(timer); throw new Error("Máy chủ không phản hồi sau 15 giây. Chưa rõ yêu cầu đã được ghi nhận hay chưa, hãy tải lại trang để kiểm tra."); }
+      /* empty body */
+    } finally {
+      clearTimeout(timer);
+    }
     if (!resp.ok) {
       if (resp.status === 401) throw new Error("Phiên đăng nhập đã hết hạn. Tải lại trang để đăng nhập lại.");
       const detail = data && data.detail;
@@ -137,13 +187,6 @@
     });
   }
 
-  const childSelect = $("#childSelect");
-  if (childSelect) {
-    childSelect.addEventListener("change", () => {
-      window.location.href = "/dashboard?child_id=" + encodeURIComponent(childSelect.value);
-    });
-  }
-
   if (!boot.childId) return;
   const CHILD = boot.childId;
 
@@ -171,19 +214,61 @@
     savebar.inert = !visible;
     savebar.hidden = !visible;
   }
-  function showTab(name, focus) {
+  const calm = matchMedia("(prefers-reduced-motion: reduce)");
+
+  // One sliding highlight behind the active rail item (vertical rail on desktop, bottom bar on phones).
+  const tabList = $(".rail .tabs");
+  let glider = null;
+  if (tabList) {
+    glider = el("span", { class: "rail-glider", "aria-hidden": "true" });
+    tabList.prepend(glider);
+    tabList.classList.add("has-glider");
+  }
+  function moveGlider(instant) {
+    const active = tabs.find((t) => t.getAttribute("aria-selected") === "true");
+    if (!glider || !active || !active.offsetWidth) return;
+    if (instant) glider.style.transition = "none";
+    glider.style.width = active.offsetWidth + "px";
+    glider.style.height = active.offsetHeight + "px";
+    glider.style.transform = `translate(${active.offsetLeft}px, ${active.offsetTop}px)`;
+    if (instant) { void glider.offsetWidth; glider.style.transition = ""; }
+  }
+  if (tabList) new ResizeObserver(() => moveGlider(true)).observe(tabList);
+
+  const phoneBar = matchMedia("(max-width: 720px)");
+  const railVertical = () => !phoneBar.matches;
+  function syncOrientation() { if (tabList) tabList.setAttribute("aria-orientation", railVertical() ? "vertical" : "horizontal"); }
+  syncOrientation();
+  phoneBar.addEventListener("change", syncOrientation);
+
+  let firstShow = true;
+  function showTab(name, focus, instant) {
     tabs.forEach((tab) => {
       const on = tab.dataset.tab === name;
+      const panel = $("#panel-" + tab.dataset.tab);
+      const wasHidden = panel.hidden;
       tab.setAttribute("aria-selected", on ? "true" : "false");
       tab.tabIndex = on ? 0 : -1;
-      $("#panel-" + tab.dataset.tab).hidden = !on;
+      panel.hidden = !on;
+      if (!on) panel.classList.remove("is-entering");
+      // A short settle for the panel that just appeared; never on first paint, which has its own entrance.
+      // Keyboard switches (focus === true) are instant: they repeat too often to animate.
+      if (on && wasHidden && !firstShow && !focus && !instant && !calm.matches) {
+        panel.classList.remove("is-entering");
+        void panel.offsetWidth;
+        panel.classList.add("is-entering");
+        panel.addEventListener("animationend", () => panel.classList.remove("is-entering"), { once: true });
+      }
       if (on && focus) tab.focus();
     });
+    moveGlider(firstShow || Boolean(focus) || Boolean(instant));
+    firstShow = false;
     setSavebarVisible(name === "schedule" || name === "rules" || isDirty());
     history.replaceState(null, "", "#" + name);
   }
   tabs.forEach((tab, i) => {
-    tab.addEventListener("click", () => showTab(tab.dataset.tab));
+    // e.detail === 0 means Enter/Space activated the button: take the instant path.
+    tab.addEventListener("click", (e) => showTab(tab.dataset.tab, e.detail === 0));
     tab.addEventListener("keydown", (e) => {
       const destinations = {
         ArrowLeft: (i + tabs.length - 1) % tabs.length,
@@ -191,6 +276,7 @@
         Home: 0,
         End: tabs.length - 1,
       };
+      if (railVertical()) { destinations.ArrowUp = destinations.ArrowLeft; destinations.ArrowDown = destinations.ArrowRight; delete destinations.ArrowLeft; delete destinations.ArrowRight; }
       if (!Object.hasOwn(destinations, e.key)) return;
       e.preventDefault();
       showTab(tabs[destinations[e.key]].dataset.tab, true);
@@ -510,63 +596,211 @@
   });
 
   /* ---------- Urgent commands ---------- */
-  const COMMAND_TEXT = {
-    LOCK_NOW: "Đã gửi lệnh khóa máy.",
-    UNLOCK: "Đã gửi lệnh mở khóa.",
-    ADD_TIME_15M: "Đã cộng thêm 15 phút.",
-    PARENT_PAUSE_2H: "Đã tạm nghỉ kiểm soát trong 2 giờ.",
+  // The server answers DISPATCHED whether or not a device is connected, so the wording says what is known.
+  const COMMAND_NAME = {
+    LOCK_NOW: "khóa máy",
+    UNLOCK: "mở khóa",
+    ADD_TIME_15M: "cộng thêm 15 phút",
+    PARENT_PAUSE_2H: "tạm nghỉ kiểm soát 2 giờ",
   };
-  $$("[data-command]").forEach((button) => button.addEventListener("click", async () => {
-    const command = button.dataset.command;
-    if (command === "PARENT_PAUSE_2H") {
-      const ok = await confirmDialog("Tạm nghỉ kiểm soát 2 giờ?", "Trong 2 giờ tới máy của con không bị giới hạn thời gian, ứng dụng hay trang web. Việc này được ghi vào nhật ký.", "Tạm nghỉ 2 giờ");
-      if (!ok) return;
+  const guardCard = $(".guard");
+  const liveDevices = guardCard ? Number(guardCard.dataset.live || 0) : 0;
+  const allDevices = guardCard ? Number(guardCard.dataset.total || 0) : 0;
+  function commandSentText(command) {
+    // What is known: the server accepted the command; how many machines had a live channel at page load.
+    return "Máy chủ đã nhận lệnh " + COMMAND_NAME[command] + ". Khi tải trang, " + liveDevices + "/" + allDevices + " máy có kênh lệnh khẩn.";
+  }
+  // One urgent command at a time: the whole group is guarded from confirmation to response,
+  // with aria-disabled so the button that started it keeps keyboard focus.
+  const commandButtons = $$("[data-command]");
+  let commandBusy = false;
+  function setCommandsBusy(busy, active) {
+    commandBusy = busy;
+    commandButtons.forEach((b) => { if (busy) b.setAttribute("aria-disabled", "true"); else b.removeAttribute("aria-disabled"); });
+    if (active) {
+      active.classList.toggle("is-busy", busy);
+      if (busy) active.setAttribute("aria-busy", "true"); else active.removeAttribute("aria-busy");
     }
+  }
+  commandButtons.forEach((button) => button.addEventListener("click", async () => {
+    if (commandBusy) return;
+    const command = button.dataset.command;
+    setCommandsBusy(true, null);
     try {
-      await withBusy(button, () => api("POST", "/api/v1/commands", {
+      if (command === "PARENT_PAUSE_2H") {
+        const ok = await confirmDialog("Tạm nghỉ kiểm soát 2 giờ?", "Lệnh áp dụng cho mọi thiết bị đã ghép của " + boot.childName + ". Từ lúc mỗi máy nhận lệnh, trong 2 giờ máy đó không bị giới hạn thời gian, ứng dụng hay trang web. Việc này được ghi vào nhật ký.", "Tạm nghỉ 2 giờ");
+        if (!ok) return;
+      }
+      setCommandsBusy(true, button);
+      await api("POST", "/api/v1/commands", {
         child_id: CHILD, command, params: button.dataset.params ? JSON.parse(button.dataset.params) : {},
-      }));
-      toast(COMMAND_TEXT[command]);
-    } catch (err) { toast(err.message, "error"); }
+      });
+      toast(commandSentText(command));
+    } catch (err) {
+      toast(err.message, "error");
+    } finally {
+      setCommandsBusy(false, button);
+    }
   }));
 
-  /* ---------- Child requests ---------- */
-  function renderRequests(requests) {
-    const list = $("#requestList");
-    const count = $("#requestCount");
-    count.textContent = requests.length;
+  /* ---------- Child requests ----------
+     Rows are reconciled by request_key, so polling never rebuilds a row that is still pending:
+     focus, in-flight state and the entrance of genuinely new rows all survive the 20 s refresh. */
+  const requestList = $("#requestList");
+  const requestStatus = $("#requestStatus");
+  const deciding = new Set();  // approve/deny call in flight
+  const resolved = new Set();  // decided here; hidden until the server stops listing it
+  const childName = boot.childName || "";
+  let firstRequestRender = true;
+
+  const deviceNames = JSON.parse(($("#deviceNames") || {}).textContent || "{}");
+  function requestWhen(r) {
+    const d = r.ts ? new Date(r.ts) : null;
+    if (!d || isNaN(d)) return r.local_time;
+    const pad = (n) => String(n).padStart(2, "0");
+    const time = pad(d.getHours()) + ":" + pad(d.getMinutes());
+    return d.toDateString() === new Date().toDateString() ? time : pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + " " + time;
+  }
+  // The pairing list may have changed in another session: re-read it from the dashboard before approving.
+  async function currentDeviceNames() {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    try {
+      const resp = await fetch("/dashboard?child_id=" + encodeURIComponent(CHILD), { credentials: "same-origin", signal: ctrl.signal });
+      if (!resp.ok) return null;
+      const doc = new DOMParser().parseFromString(await resp.text(), "text/html");
+      const node = doc.getElementById("deviceNames");
+      return node ? JSON.parse(node.textContent) : null;
+    } catch (e) { return null; }
+    finally { clearTimeout(timer); }
+  }
+  let confirming = false; // one approval confirmation at a time
+  async function verifySource(r) {
+    const fresh = await currentDeviceNames();
+    if (fresh && fresh[r.device_id]) return true;
+    if (confirming) return false;
+    confirming = true;
+    try {
+      const reason = fresh ? "Máy gửi yêu cầu này không còn được ghép." : "Chưa kiểm tra được máy gửi yêu cầu còn được ghép hay không.";
+      return await confirmDialog("Duyệt cho mọi máy còn lại?", reason + " Lệnh cộng " + r.minutes + " phút có thể tới mọi máy còn lại của " + childName + ".", "Duyệt cho mọi máy");
+    } finally { confirming = false; }
+  }
+  function requestRow(r) {
+    const source = deviceNames[r.device_id] || "Máy đã gỡ";
+    const when = requestWhen(r);
+    const what = "yêu cầu xin thêm " + r.minutes + " phút lúc " + when + " từ " + source;
+    const approve = el("button", { class: "btn btn-sm", html: icon("check") + "Duyệt", "aria-label": "Duyệt " + what });
+    const deny = el("button", { class: "btn btn-sm btn-quiet", text: "Từ chối", "aria-label": "Từ chối " + what });
+    // If the source machine is gone (or cannot be verified), the server grants time to every remaining device,
+    // so approval re-checks pairing first, inside the row's pending state.
+    approve.addEventListener("click", () => decide(r.request_key, "approve", approve, () => verifySource(r)));
+    deny.addEventListener("click", () => decide(r.request_key, "deny", deny));
+    // Pending rows use aria-disabled, not disabled, so a focused button keeps focus while the call runs.
+    return el("div", { class: "req-row" + (firstRequestRender ? "" : " is-new"), "data-request": r.request_key }, [
+      el("span", { class: "req-time num", text: when }),
+      el("div", { class: "req-card" }, [
+        el("span", { class: "req-avatar", "aria-hidden": "true", text: childName.slice(0, 1).toUpperCase() }),
+        el("div", { class: "req-body" }, [
+          el("span", { class: "request-what", text: "Xin thêm " + r.minutes + " phút" }),
+          el("span", { class: "req-sub", text: source }),
+        ]),
+        el("div", { class: "req-actions" }, [approve, deny]),
+      ]),
+    ]);
+  }
+  function setRowBusy(row, busy) {
+    $$("button", row).forEach((b) => { if (busy) b.setAttribute("aria-disabled", "true"); else b.removeAttribute("aria-disabled"); });
+  }
+  function renderRequests(all) {
+    const requests = all.filter((r) => !resolved.has(r.request_key));
+    const keys = new Set(requests.map((r) => r.request_key));
+    resolved.forEach((k) => { if (!all.some((r) => r.request_key === k)) resolved.delete(k); });
+    $("#requestCount").textContent = requests.length;
+    $("#requestCount").hidden = requests.length === 0;
     const big = $("#pendingBig");
     if (big) big.textContent = requests.length;
-    count.hidden = requests.length === 0;
-    list.textContent = "";
-    if (!requests.length) {
-      list.append(el("div", { class: "empty", html: "<strong>Không có yêu cầu nào đang chờ.</strong>Khi con bấm \"Xin thêm giờ\" trên máy, yêu cầu hiện ở đây để bố mẹ duyệt hoặc từ chối." }));
-      return;
-    }
-    requests.forEach((r) => {
-      const approve = el("button", { class: "btn btn-sm", html: icon("check") + "Duyệt +15 phút" });
-      const deny = el("button", { class: "btn btn-sm btn-quiet", text: "Từ chối" });
-      approve.addEventListener("click", () => decide(approve, r.request_key, "approve"));
-      deny.addEventListener("click", () => decide(deny, r.request_key, "deny"));
-      const what = el("div");
-      what.append(el("span", { class: "request-what", text: "Con xin thêm " + r.minutes + " phút" }), " ", el("span", { class: "muted small", text: "lúc " + r.local_time }));
-      list.append(el("div", { class: "request" }, [what, el("div", { class: "row" }, [approve, deny])]));
+    $("#pendingEmpty").hidden = requests.length > 0;
+    $("#pendingLabel").hidden = requests.length === 0;
+
+    // Remove rows that are gone, remembering where focus should land.
+    let lostFocusAt = -1;
+    $$(".req-row", requestList).forEach((row, index) => {
+      if (keys.has(row.dataset.request)) return;
+      if (row.contains(document.activeElement)) lostFocusAt = index;
+      row.remove();
     });
+    // Insert new rows in server order; existing nodes are moved, never rebuilt.
+    let cursor = null;
+    requests.forEach((r) => {
+      let row = $(`.req-row[data-request="${CSS.escape(r.request_key)}"]`, requestList);
+      if (!row) row = requestRow(r);
+      setRowBusy(row, deciding.has(r.request_key));
+      const want = cursor ? cursor.nextElementSibling : requestList.firstElementChild;
+      if (row !== want) requestList.insertBefore(row, want);
+      cursor = row;
+    });
+    $("#pendingRequests").hidden = requests.length === 0;
+    if (lostFocusAt >= 0) {
+      const rows = $$(".req-row", requestList);
+      const target = rows[Math.min(lostFocusAt, rows.length - 1)];
+      (target ? $("button", target) : $("#requestSummary")).focus();
+    }
   }
-  async function decide(button, key, verb) {
+  async function decide(key, verb, button, precheck) {
+    if (deciding.has(key) || button.getAttribute("aria-disabled") === "true") return;
+    const row = button.closest(".req-row");
+    deciding.add(key);
+    setRowBusy(row, true);
+    button.classList.add("is-busy");
+    button.setAttribute("aria-busy", "true");
     try {
-      await withBusy(button, () => api("POST", `/api/v1/requests/${CHILD}/${verb}`, { request_key: key }));
-      toast(verb === "approve" ? "Đã duyệt. Máy của con được cộng 15 phút." : "Đã từ chối yêu cầu.");
-      await pollRequests();
-    } catch (err) { toast(err.message, "error"); }
+      if (precheck && !(await precheck())) return;
+      const result = await api("POST", `/api/v1/requests/${CHILD}/${verb}`, { request_key: key });
+      resolved.add(key);
+      const minutes = Math.round(((result && result.bonus_seconds) || 900) / 60);
+      const noTargets = result && Array.isArray(result.targets) && result.targets.length === 0;
+      toast(verb !== "approve" ? "Đã từ chối yêu cầu."
+        : noTargets ? "Đã ghi nhận duyệt. Không có thiết bị nào để gửi lệnh."
+        : "Đã ghi nhận duyệt. Máy chủ đã xếp lệnh cộng " + minutes + " phút. Bấm Làm mới ở thẻ Hạn mức để xem số dư mới.");
+    } catch (err) {
+      toast(err.message, "error");
+    } finally {
+      deciding.delete(key);
+      button.classList.remove("is-busy");
+      button.removeAttribute("aria-busy");
+      if (!resolved.has(key)) setRowBusy(row, false);
+    }
+    renderRequests(lastRequests);
+    pollRequests();
   }
+  let lastRequests = boot.pendingRequests || [];
+  let pollHealthy = true;
+  function setPollState(ok) {
+    if (ok === pollHealthy) return; // announce transitions only
+    pollHealthy = ok;
+    if (requestStatus) { requestStatus.textContent = ok ? "Tự cập nhật" : "Chưa cập nhật được"; requestStatus.classList.toggle("is-stale", !ok); }
+    const kpi = $("#kpiRequestStatus");
+    if (kpi) { kpi.hidden = ok; kpi.classList.toggle("is-stale-text", !ok); }
+    const live = $("#requestLive");
+    if (live) live.textContent = ok ? "Đã cập nhật lại danh sách yêu cầu." : "Không cập nhật được danh sách yêu cầu. Đang hiện số đã biết.";
+  }
+  let pollSeq = 0;
   async function pollRequests() {
+    const seq = ++pollSeq;
     try {
       const data = await api("GET", "/api/v1/requests/" + CHILD);
-      renderRequests(data.pending_requests);
-    } catch (e) { /* keep the last known list; the next poll retries */ }
+      if (seq !== pollSeq) return; // a newer poll already answered
+      lastRequests = data.pending_requests;
+      renderRequests(lastRequests);
+      setPollState(true);
+    } catch (e) {
+      if (seq !== pollSeq) return;
+      setPollState(false); // keep the last known list, say it may be out of date; the next poll retries
+    }
   }
-  renderRequests(boot.pendingRequests || []);
+  requestList.textContent = "";
+  renderRequests(lastRequests);
+  firstRequestRender = false;
   setInterval(() => { if (!document.hidden) pollRequests(); }, 20000);
 
   /* ---------- Pairing ---------- */
@@ -616,7 +850,25 @@
       setTimeout(() => window.location.reload(), 1200);
     } catch (err) { toast(err.message, "error"); }
   });
-  $("#printBtn").addEventListener("click", () => { showTab("today"); window.print(); });
+  $("#printBtn").addEventListener("click", () => { showTab("today", false, true); window.print(); });
+  const reportDetails = $("#reportDetails");
+  let reportWasOpen;
+  window.addEventListener("beforeprint", () => {
+    reportWasOpen = reportDetails.open;
+    reportDetails.open = true;
+  });
+  window.addEventListener("afterprint", () => { reportDetails.open = reportWasOpen; });
+
+  /* ---------- Quick actions: jump to a tab and focus the field ---------- */
+  $$("[data-goto]").forEach((button) => button.addEventListener("click", (e) => {
+    const keyboard = e.detail === 0;
+    showTab(button.dataset.goto, false, keyboard);
+    const target = button.dataset.focus && $(button.dataset.focus);
+    if (target) {
+      target.scrollIntoView({ block: "center", behavior: keyboard || calm.matches ? "auto" : "smooth" });
+      target.focus({ preventScroll: true });
+    }
+  }));
 
   /* ---------- Init ---------- */
   buildMatrix();
@@ -627,4 +879,12 @@
   const initial = (window.location.hash || "").slice(1);
   showTab(tabs.some((t) => t.dataset.tab === initial) ? initial : "today");
   refreshSavebar();
+
+  /* ---------- First-paint entrance: plays once per page load, never on later tab returns.
+     Numbers are final from the first frame; only the containers and chart geometry settle in. ---------- */
+  const loadedAt = $("#loadedAt");
+  if (loadedAt) { const t = new Date(); loadedAt.textContent = String(t.getHours()).padStart(2, "0") + ":" + String(t.getMinutes()).padStart(2, "0"); }
+  const refreshToday = $("#refreshToday");
+  // Unsaved policy edits are already guarded by the beforeunload prompt.
+  if (refreshToday) refreshToday.addEventListener("click", () => { history.replaceState(null, "", "#today"); location.reload(); });
 })();

@@ -1,160 +1,179 @@
 {% extends "base.html" %}
+{% from "_info.html" import info %}
+{% from "_profile_picker.html" import profile_picker %}
 
-{% block title %}Bảng điều khiển - OGK{% endblock %}
+{% block title %}Bảng điều khiển - {{ app_name }}{% endblock %}
+{% block body_class %}guardian-dashboard{% endblock %}
 
 {% macro icon(name) %}<svg class="icon" aria-hidden="true"><use href="#i-{{ name }}"/></svg>{% endmacro %}
+
+{% block topbar_center %}
+{{ profile_picker(selected_child, children, "/dashboard") }}
+{% endblock %}
+
+{% block topbar_actions %}
+{% if selected_child %}
+  <button type="button" class="pill" data-goto="rules" data-focus="#appName">{{ icon('plus') }}Ứng dụng</button>
+  <button type="button" class="pill" data-goto="rules" data-focus="#domainName">{{ icon('plus') }}Tên miền</button>
+  <button type="button" class="pill" data-goto="devices" data-focus="#consent">{{ icon('plus') }}Thiết bị</button>
+  <button type="button" class="pill" data-goto="devices" data-focus="#childName">{{ icon('plus') }}Hồ sơ trẻ</button>
+{% endif %}
+{% endblock %}
+
+{% block rail %}
+{% if selected_child %}
+  <nav class="rail no-print" aria-label="Các phần của bảng điều khiển">
+    <div class="tabs" role="tablist" aria-label="Các phần của bảng điều khiển">
+      <button class="tab rail-item" role="tab" id="tab-today" aria-controls="panel-today" aria-selected="true" data-tab="today" title="Hôm nay">{{ icon('home') }}<span class="rail-label">Hôm nay</span><span class="count" id="requestCount" {% if not report.pending_requests %}hidden{% endif %}>{{ report.pending_requests|length }}</span></button>
+      <button class="tab rail-item" role="tab" id="tab-schedule" aria-controls="panel-schedule" aria-selected="false" data-tab="schedule" title="Lịch và hạn mức">{{ icon('calendar') }}<span class="rail-label">Lịch và hạn mức</span></button>
+      <button class="tab rail-item" role="tab" id="tab-rules" aria-controls="panel-rules" aria-selected="false" data-tab="rules" title="Ứng dụng và web">{{ icon('apps') }}<span class="rail-label">Ứng dụng và web</span></button>
+      <button class="tab rail-item" role="tab" id="tab-devices" aria-controls="panel-devices" aria-selected="false" data-tab="devices" title="Thiết bị">{{ icon('monitor') }}<span class="rail-label">Thiết bị</span></button>
+    </div>
+    <div class="rail-secondary">
+      <a class="rail-item" href="/child-view">{{ icon('child') }}<span class="rail-label">Màn hình của con</span></a>
+      <a class="rail-item" href="/audit/view">{{ icon('list') }}<span class="rail-label">Nhật ký</span></a>
+      <a class="rail-item" href="/logout">{{ icon('logout') }}<span class="rail-label">Đăng xuất</span></a>
+    </div>
+  </nav>
+{% else %}
+  {{ super() }}
+{% endif %}
+{% endblock %}
 
 {% block content %}
 {% if selected_child %}
 {% set online_n = devices|selectattr('online')|list|length %}
-<div class="shell">
-  <aside class="side no-print">
-    <div class="profile">
-      <span class="avatar" aria-hidden="true">{{ current_user.email[:2]|upper }}</span>
-      <div>
-        <div class="profile-name">{{ 'Quản trị viên' if (current_user.session_role or current_user.role) == 'admin' else 'Phụ huynh' }}</div>
-        <div class="profile-mail" title="{{ current_user.email }}">{{ current_user.email }}</div>
-      </div>
-    </div>
-    <div class="tabs" role="tablist" aria-label="Các phần của bảng điều khiển">
-      <button class="tab" role="tab" id="tab-today" aria-controls="panel-today" aria-selected="true" data-tab="today"><span class="tab-ico">{{ icon('home') }}</span><span>Hôm nay</span><span class="count" id="requestCount" {% if not report.pending_requests %}hidden{% endif %}>{{ report.pending_requests|length }}</span></button>
-      <button class="tab" role="tab" id="tab-schedule" aria-controls="panel-schedule" aria-selected="false" data-tab="schedule"><span class="tab-ico">{{ icon('calendar') }}</span><span>Lịch và hạn mức</span></button>
-      <button class="tab" role="tab" id="tab-rules" aria-controls="panel-rules" aria-selected="false" data-tab="rules"><span class="tab-ico">{{ icon('apps') }}</span><span>Ứng dụng và web</span></button>
-      <button class="tab" role="tab" id="tab-devices" aria-controls="panel-devices" aria-selected="false" data-tab="devices"><span class="tab-ico">{{ icon('monitor') }}</span><span>Thiết bị</span></button>
-    </div>
-    <p class="side-note">{{ icon('camera-off') }}<span>Không chụp màn hình, không giám sát lén. Con xem được cùng dữ liệu này.</span></p>
-  </aside>
-
-  <div class="main">
-<div class="page-head">
-  <div>
-    <h1 class="page-title">Tổng quan: {{ selected_child.display_name }}</h1>
-    <p class="muted small">{{ selected_child.age_group }} tuổi · {{ devices|length }} thiết bị, {{ online_n }} đang bật</p>
-  </div>
-  {% if children|length > 1 %}
-    <div class="child-switch no-print">
-      <label for="childSelect" class="label">Hồ sơ</label>
-      <select id="childSelect" class="select select-fit">
-        {% for c in children %}
-          <option value="{{ c.id }}" {% if selected_child.id == c.id %}selected{% endif %}>{{ c.display_name }} ({{ c.age_group }} tuổi)</option>
-        {% endfor %}
-      </select>
-    </div>
-  {% endif %}
-</div>
+{% set child_initial = selected_child.display_name[:1]|upper %}
+{% set exhausted = today.over or not today.limit_min %}
+{% set no_quota = not today.limit_min %}
+{% set device_names = {} %}{% for d in devices %}{% set _ = device_names.update({d.id: d.name}) %}{% endfor %}
+<h1 class="sr-only print-title">Tổng quan: {{ selected_child.display_name }}</h1>
+<script type="application/json" id="deviceNames">{{ device_names|tojson }}</script>
 
 <!-- ============ Hôm nay ============ -->
 <section class="tabpanel" role="tabpanel" id="panel-today" aria-labelledby="tab-today">
-  <div class="stats">
-    <div class="stat {% if today.is_weekend %}is-weekend{% endif %}">
-      <div class="stat-head"><span class="stat-ico {% if today.is_weekend %}is-weekend{% endif %}">{{ icon('clock') }}</span><span>Thời gian dùng máy hôm nay<br><span class="muted">{{ today.weekday_name }}, {{ today.day }}/{{ today.month }}</span></span></div>
-      <div class="stat-value num {% if today.over %}is-over{% endif %}">{{ today.used_min }} <small>/ {{ today.limit_min }} phút</small></div>
-      <div class="meter {% if today.over %}is-over{% endif %}" role="img" aria-label="Đã dùng {{ today.pct }}% hạn mức hôm nay"><span style="--pct: {{ today.pct }}%"></span></div>
-      <p class="stat-foot">
-        {% if today.over %}<strong>Đã hết hạn mức hôm nay.</strong>
-        {% else %}Còn <strong>{{ today.remaining_text }}</strong> theo hạn mức {{ 'cuối tuần' if today.is_weekend else 'ngày thường' }}.{% endif %}
-      </p>
-      <p class="help">
+  <div class="home">
+
+    <article class="card today-summary">
+      <header class="card-head">
+        <h2 class="card-title">Hôm nay</h2>
+        <span class="card-head-actions">
+          <button type="button" class="chip chip-link" id="refreshToday">Làm mới</button>
+          {% call info("limit-info", "Giải thích số liệu hạn mức") %}Số liệu lúc tải trang <span id="loadedAt" class="num"></span>.
+        {% if devices|length > 1 %}Khi có nhiều máy, hạn mức theo bộ đếm cao nhất trong các máy. {% endif %}
         {% if today.source_live %}Do chính máy của con đếm, gửi về mỗi 60 giây. Không tính lúc khóa màn hình hoặc không thao tác quá 5 phút.
-        {% else %}Chưa nhận được số đếm trực tiếp hôm nay, đang hiển thị tổng thời lượng ứng dụng đã ghi nhận.{% endif %}
+        {% else %}Chưa nhận được số đếm trực tiếp hôm nay, đang hiển thị tổng thời lượng ứng dụng đã ghi nhận.{% endif %}{% endcall %}
+        </span>
+      </header>
+      <p class="today-balance">
+        {% if no_quota %}Hôm nay {{ selected_child.display_name }} không có giờ dùng máy.
+        {% elif today.over %}{{ selected_child.display_name }} đã dùng hết giờ hôm nay.
+        {% else %}{{ selected_child.display_name }} còn {{ today.remaining_text }} hôm nay.{% endif %}
       </p>
-    </div>
-
-    <div class="stat">
-      <div class="stat-head"><span class="stat-ico is-sky">{{ icon('shield') }}</span><span>Lần chặn hôm nay</span></div>
-      <div class="stat-value num">{{ report.blocked_today }} <small>lần</small></div>
-      <p class="stat-foot">Trung bình mỗi ngày: <strong>{{ week.avg_text }}</strong></p>
-    </div>
-
-    <div class="stat">
-      <div class="stat-head"><span class="stat-ico is-gold">{{ icon('hand') }}</span><span>Yêu cầu đang chờ duyệt</span></div>
-      <div class="stat-value num" id="pendingBig">{{ report.pending_requests|length }}</div>
-      <a class="stat-link" href="#requestList">Xem yêu cầu →</a>
-    </div>
-  </div>
-
-  <div class="cols">
-    <div class="panel col-7">
-      <div class="panel-head">
-        <h2 class="section-title">Yêu cầu của con</h2>
-        <span class="muted">Tự cập nhật mỗi 20 giây</span>
+      <p class="today-used num">Đã dùng {{ today.used_min }} / {{ today.limit_min }} phút</p>
+      {% if today.limit_min %}
+        <progress class="today-progress {{ 'is-over' if exhausted else '' }}" value="{{ [today.used_min, today.limit_min]|min }}" max="{{ today.limit_min }}" aria-label="Thời gian đã dùng hôm nay"></progress>
+      {% endif %}
+      <div class="today-status">
+        <span>{{ icon('shield') }}<span class="num">{{ report.blocked_today }}</span> lần chặn hôm nay</span>
+        <span id="requestSummary" tabindex="-1">
+          {{ icon('hand') }}
+          <span id="pendingEmpty" {% if report.pending_requests %}hidden{% endif %}>Không có yêu cầu nào đang chờ.</span>
+          <span id="pendingLabel" {% if not report.pending_requests %}hidden{% endif %}><strong class="num" id="pendingBig">{{ report.pending_requests|length }}</strong> yêu cầu chờ duyệt</span>
+        </span>
+        <span id="kpiRequestStatus" class="small" hidden>Chưa cập nhật được</span>
       </div>
-      <div id="requestList">
+    </article>
+
+    <p class="sr-only" role="status" id="requestLive"></p>
+    <article class="card area-req" id="pendingRequests" {% if not report.pending_requests %}hidden{% endif %}>
+      <header class="card-head"><h2 class="card-title" id="requestsTitle" tabindex="-1">Yêu cầu của con</h2><span class="ghost-pill" id="requestStatus">Tự cập nhật</span></header>
+      <div class="req-cols"><span>Lúc <small>(giờ trên máy này)</small></span><span>Yêu cầu</span></div>
+      <div id="requestList" class="req-list">
         {% for r in report.pending_requests %}
-          <div class="request" data-request="{{ r.request_key }}">
-            <div><span class="request-what">Con xin thêm {{ r.minutes }} phút</span> <span class="muted small">lúc {{ r.local_time }}</span></div>
-            <div class="row">
-              <button class="btn btn-sm" data-approve="{{ r.request_key }}">{{ icon('check') }}Duyệt +15 phút</button>
-              <button class="btn btn-sm btn-quiet" data-deny="{{ r.request_key }}">Từ chối</button>
+          {% set src = device_names.get(r.device_id, 'Máy đã gỡ') %}
+          <div class="req-row" data-request="{{ r.request_key }}">
+            <span class="req-time num">{{ r.local_time }}</span>
+            <div class="req-card">
+              <span class="req-avatar" aria-hidden="true">{{ child_initial }}</span>
+              <div class="req-body"><span class="request-what">Xin thêm {{ r.minutes }} phút</span><span class="req-sub">{{ src }}</span></div>
+              <div class="req-actions">
+                <button class="btn btn-sm" data-approve="{{ r.request_key }}" aria-label="Duyệt yêu cầu xin thêm {{ r.minutes }} phút lúc {{ r.local_time }} từ {{ src }}">{{ icon('check') }}Duyệt</button>
+                <button class="btn btn-sm btn-quiet" data-deny="{{ r.request_key }}" aria-label="Từ chối yêu cầu xin thêm {{ r.minutes }} phút lúc {{ r.local_time }} từ {{ src }}">Từ chối</button>
+              </div>
             </div>
           </div>
-        {% else %}
-          <div class="empty"><strong>Không có yêu cầu nào đang chờ.</strong>Khi con bấm "Xin thêm giờ" trên máy, yêu cầu hiện ở đây để bố mẹ duyệt hoặc từ chối.</div>
         {% endfor %}
       </div>
-    </div>
+    </article>
 
-    <div class="panel col-5 no-print">
-      <div class="panel-head">
-        <h2 class="section-title">Lệnh Điều Khiển Khẩn</h2>
-        <span class="muted">Tới máy của con trong 5 giây</span>
-      </div>
-      {% if not devices %}
-        <div class="notice notice-warn">{{ icon('alert') }}<span>Chưa có thiết bị nào được ghép đôi, nên chưa gửi lệnh được. Vào tab <strong>Thiết bị</strong> để tạo mã ghép đôi.</span></div>
+    <div class="card today-devices no-print">
+      <p>{{ icon('monitor') }}
+        {% if devices %}<span class="status-dot {{ 'is-on' if online_n else '' }}"></span><span class="num">{{ online_n }}/{{ devices|length }}</span> thiết bị có kết nối
+        {% else %}<strong>Chưa có thiết bị</strong>{% endif %}
+      </p>
+      {% if devices %}
+        <button type="button" class="chip chip-link" data-goto="devices" data-focus="#devicesTitle">Xem thiết bị{{ icon('arrow') }}</button>
       {% else %}
-        <div class="cmd-grid">
-          <button class="btn btn-danger cmd" data-command="LOCK_NOW">{{ icon('lock') }}Khóa máy ngay</button>
-          <button class="btn btn-quiet cmd" data-command="UNLOCK">{{ icon('unlock') }}Mở khóa</button>
-          <button class="btn btn-quiet cmd" data-command="ADD_TIME_15M" data-params='{"bonus_seconds": 900}'>{{ icon('clock-plus') }}Thêm 15 phút</button>
-          <button class="btn btn-quiet cmd" data-command="PARENT_PAUSE_2H" data-params='{"duration_seconds": 7200}'>{{ icon('pause') }}Tạm nghỉ 2 giờ</button>
-        </div>
-        <p class="help section-follow-up">Mỗi lệnh được ký số và ghi vào nhật ký. "Tạm nghỉ 2 giờ" dừng toàn bộ kiểm soát rồi tự bật lại.</p>
+        <button type="button" class="chip chip-link" data-goto="devices" data-focus="#consent">Ghép thiết bị{{ icon('arrow') }}</button>
       {% endif %}
     </div>
-  </div>
 
-  <div class="cols">
-    <div class="panel col-7">
-      <div class="panel-head">
-        <h2 class="section-title">Thời lượng 7 ngày qua</h2>
-        <span class="muted">Tổng {{ week.total_text }}</span>
-      </div>
+    <article class="card area-week">
+      <header class="card-head"><h2 class="card-title">Thời lượng ứng dụng 7 ngày qua</h2>{% call info("week-info", "Giải thích biểu đồ tuần") %}Tổng thời gian ứng dụng đã ghi nhận trên mọi máy, nên có thể khác bộ đếm hạn mức. Đơn vị: phút. Bấm hoặc chạm vào một cột để xem số phút.<span class="wchart-swipe"> Vuốt ngang để xem đủ 7 ngày.</span>{% endcall %}</header>
       {% if week.has_data %}
-        <div class="weekchart" role="img" aria-label="Biểu đồ thời lượng dùng máy 7 ngày qua, tổng {{ week.total_text }}">
-          {% for b in week.bars %}
-            <div class="wbar {% if b.is_weekend %}is-weekend{% endif %} {% if b.is_today %}is-today{% endif %}" title="{{ b.label }} {{ b.date }}: {{ b.text }}, {{ b.blocked }} lần chặn">
-              <div class="wbar-track"><div class="wbar-fill" style="--pct: {{ b.pct }}%"><span class="wbar-val">{{ b.minutes }}</span></div></div>
-              <div class="wbar-label">{{ b.label }}<small>{{ b.date }}</small></div>
-            </div>
-          {% endfor %}
+        {% set peak = week.bars|map(attribute='minutes')|max %}
+        <div class="week-top">
+          <p class="week-total num">{{ week.total_text }}</p>
+          <ul class="week-legend" aria-hidden="true">
+            <li><i class="lg lg-day"></i>Ngày thường</li>
+            <li><i class="lg lg-weekend"></i>Cuối tuần</li>
+            <li><i class="lg lg-today"></i>Hôm nay</li>
+          </ul>
         </div>
-        <p class="help section-follow-up">Đơn vị: phút. Cột cam là thứ Bảy và Chủ nhật. Cột có viền là hôm nay.</p>
+        <div class="weekchart" role="group" aria-label="Biểu đồ thời lượng dùng máy 7 ngày qua, tổng {{ week.total_text }}">
+          {% set mid = (peak / 2)|round|int %}<div class="wchart-axis num" aria-hidden="true"><div class="wchart-scale"><span style="--at: 100%">{{ peak }}</span>{% if 0 < mid < peak %}<span style="--at: {{ (mid * 100 / peak)|round(1) }}%">{{ mid }}</span>{% endif %}<span style="--at: 0%">0</span></div></div>
+          <div class="wchart-bars">
+            {% for b in week.bars %}
+              <button type="button" class="wbar {% if b.is_weekend %}is-weekend{% endif %} {% if b.is_today %}is-today{% endif %} {% if not b.minutes %}is-zero{% endif %}" aria-pressed="false" aria-label="{{ b.label }} {{ b.date }}{{ ', hôm nay' if b.is_today }}: {{ b.text }}, {{ b.blocked }} lần chặn">
+                <span class="wbar-track"><span class="wbar-fill" style="--pct: {{ b.pct }}%"></span><span class="wbar-tip num" style="--pct: {{ b.pct }}%">{{ b.minutes }} phút</span></span>
+                <span class="wbar-label">{{ b.label }}<small>{{ b.date }}</small></span>
+              </button>
+            {% endfor %}
+          </div>
+        </div>
       {% else %}
         <div class="empty"><strong>Chưa có dữ liệu trong 7 ngày qua.</strong>Biểu đồ sẽ có số sau khi máy của con được ghép đôi và gửi sự kiện đầu tiên.</div>
       {% endif %}
-    </div>
+    </article>
 
-    <div class="panel col-5">
-      <div class="panel-head"><h2 class="section-title">Theo nhóm ứng dụng</h2><span class="muted">7 ngày</span></div>
+    <details class="card report-details" id="reportDetails">
+      <summary>Xem báo cáo chi tiết{{ icon('chevron') }}</summary>
+      <div class="report-grid">
+    <article class="card area-cat">
+      <header class="card-head"><h2 class="card-title">Theo nhóm ứng dụng</h2><span class="ghost-pill">7 ngày</span></header>
       {% if categories %}
-        <div class="hbars">
-          {% for c in categories %}
-            <div class="hbar cat-{{ c.key }}">
-              <span class="hbar-name"><i class="swatch"></i>{{ c.label }}</span>
-              <span class="hbar-val">{{ c.text }} · {{ c.pct }}%</span>
-              <div class="hbar-track"><span style="--pct: {{ c.pct }}%"></span></div>
-            </div>
-          {% endfor %}
+        {% set top = categories[0] %}
+        <div class="split-head">
+          <p><small>{{ top.label }} · {{ '≈100' if categories|length > 1 and top.pct >= 100 else top.pct }}%</small><span class="num">{{ top.text }}</span></p>
+          {% if categories|length > 1 %}<p><small>Nhóm khác</small><span class="num">{{ (100 - top.pct) ~ '%' if top.pct < 100 else '<1%' }}</span></p>{% endif %}
         </div>
+        {% set trace = categories|length > 1 and top.pct >= 100 %}<div class="split-bar" role="img" aria-label="{% if trace %}{{ top.label }} gần 100%, nhóm khác dưới 1%{% else %}{% for c in categories %}{{ c.label }} {{ (c.pct ~ '%') if c.pct > 0 else 'dưới 1%' }}{{ ', ' if not loop.last }}{% endfor %}{% endif %}">
+          <span class="split-main {% if top.pct < 14 %}is-narrow{% endif %}" style="--pct: {{ top.pct }}%"><span class="num">{{ '≈100%' if trace else top.pct ~ '%' }}</span></span>
+          {% if trace %}<span class="split-trace" aria-hidden="true"></span>{% endif %}{% if categories|length > 1 and top.pct < 100 %}<span class="split-rest {% if 100 - top.pct < 14 %}is-narrow{% endif %}"><span class="num">{{ 100 - top.pct }}%</span></span>{% endif %}
+        </div>
+        {% if categories|length > 1 %}
+          <ul class="cat-list">
+            {% for c in categories[1:] %}<li><span>{{ c.label }}</span><span class="num">{{ c.text }} · {{ c.pct if c.pct > 0 else '<1' }}%</span></li>{% endfor %}
+          </ul>
+        {% endif %}
       {% else %}
         <div class="empty"><strong>Chưa có thời lượng theo nhóm.</strong>Gán nhóm cho ứng dụng ở tab "Ứng dụng và web" để thấy phân bổ tại đây.</div>
       {% endif %}
-    </div>
-  </div>
+    </article>
 
-  <div class="cols">
-    <div class="panel col-4">
-      <div class="panel-head"><h2 class="section-title">Top 10 ứng dụng</h2><span class="muted">7 ngày</span></div>
+    <article class="card area-apps">
+      <header class="card-head"><h2 class="card-title">Top 10 ứng dụng</h2>{% call info("privacy-info", "Giải thích dữ liệu hoạt động") %}Chỉ ghi tên ứng dụng, tên miền và thời lượng. Không chụp màn hình, không lưu nội dung con làm. Dữ liệu tự xóa sau 90 ngày. Con xem được cùng dữ liệu này.{% endcall %}<span class="ghost-pill">7 ngày</span></header>
       {% if top_apps %}
         <div class="hbars">
           {% for a in top_apps %}
@@ -162,22 +181,21 @@
           {% endfor %}
         </div>
       {% else %}<div class="empty">Chưa ghi nhận ứng dụng nào.</div>{% endif %}
-    </div>
+    </article>
 
-    <div class="panel col-4">
-      <div class="panel-head"><h2 class="section-title">Top 10 tên miền</h2><span class="muted">7 ngày</span></div>
+    <article class="card area-domains">
+      <header class="card-head"><h2 class="card-title">Top 10 tên miền</h2>{% call info("domain-data-info", "Giải thích dữ liệu tên miền") %}Chỉ ghi tên miền, không ghi địa chỉ trang đầy đủ.{% endcall %}<span class="ghost-pill">7 ngày</span></header>
       {% if top_domains %}
         <div class="hbars">
           {% for d in top_domains %}
             <div class="hbar"><span class="hbar-name" title="{{ d.subject }}">{{ d.subject }}</span><span class="hbar-val">{{ d.queries }} lượt</span><div class="hbar-track"><span style="--pct: {{ d.pct }}%"></span></div></div>
           {% endfor %}
         </div>
-        <p class="help section-follow-up">Chỉ ghi tên miền, không ghi địa chỉ trang đầy đủ.</p>
       {% else %}<div class="empty">Chưa ghi nhận tên miền nào.</div>{% endif %}
-    </div>
+    </article>
 
-    <div class="panel col-4">
-      <div class="panel-head"><h2 class="section-title">Lần chặn gần đây</h2><span class="muted">{{ report.total_blocked_events }} lần trong 7 ngày</span></div>
+    <article class="card area-blocks">
+      <header class="card-head"><h2 class="card-title">Lần chặn gần đây</h2><span class="ghost-pill num">{{ report.total_blocked_events }} lần</span></header>
       {% if report.recent_blocks %}
         <ul class="list">
           {% for b in report.recent_blocks %}
@@ -188,16 +206,17 @@
           {% endfor %}
         </ul>
       {% else %}<div class="empty">Chưa có lần chặn nào.</div>{% endif %}
-    </div>
-  </div>
+    </article>
 
-  <div class="notice">{{ icon('eye-off') }}<span>Chỉ ghi tên ứng dụng, tên miền và thời lượng. Không chụp màn hình, không lưu nội dung con làm. Dữ liệu tự xóa sau 90 ngày.</span></div>
+      </div>
+    </details>
+  </div>
 </section>
 
 <!-- ============ Lịch và hạn mức ============ -->
 <section class="tabpanel" role="tabpanel" id="panel-schedule" aria-labelledby="tab-schedule" hidden>
   <div class="panel">
-    <div class="panel-head"><h2 class="section-title">Hạn mức mỗi ngày</h2><span class="muted">Từ 0 đến 1440 phút</span></div>
+    <div class="panel-head"><h2 class="section-title">Hạn mức mỗi ngày</h2>{% call info("daily-info", "Giải thích hạn mức mỗi ngày") %}Máy của con cảnh báo trước 10, 5 và 1 phút, rồi cho 60 giây để lưu bài trước khi khóa.{% endcall %}<span class="muted">Từ 0 đến 1440 phút</span></div>
     <div class="limits">
       <div class="limit-card">
         <div class="field">
@@ -212,12 +231,11 @@
         </div>
       </div>
     </div>
-    <p class="help section-follow-up">Máy của con cảnh báo trước 10, 5 và 1 phút, rồi cho 60 giây để lưu bài trước khi khóa.</p>
   </div>
 
   <div class="panel sched">
     <div class="panel-head">
-      <h2 class="section-title">Lịch tuần</h2>
+      <h2 class="section-title">Lịch tuần</h2>{% call info("schedule-info", "Giải thích lịch tuần") %}Mỗi ô là 30 phút. Ngoài khung được dùng, máy khóa trong 5 giây.{% endcall %}
       <div class="legend"><span><i class="slot-on"></i>Được dùng máy</span><span><i class="slot-off"></i>Khóa</span></div>
     </div>
     <div class="row no-print schedule-actions">
@@ -236,7 +254,6 @@
       <div class="daygrid" id="dayGrid" role="group" aria-label="Các ô 30 phút của ngày đang chọn"></div>
       <button type="button" class="btn btn-sm btn-quiet follow-up-action" id="copyDay">{{ icon('copy') }}Áp dụng ngày này cho cả tuần</button>
     </div>
-    <p class="help section-follow-up">Mỗi ô là 30 phút. Ngoài khung được dùng, máy khóa trong 5 giây.</p>
   </div>
 
   <div class="panel">
@@ -259,9 +276,8 @@
         </div>
         <button class="btn btn-icon" aria-label="Thêm quy tắc ứng dụng">{{ icon('plus') }}</button>
         <div class="field rule-form-wide">
-          <label for="appHash">SHA-256 của tệp (không bắt buộc)</label>
+          <div class="field-label"><label for="appHash">SHA-256 của tệp (không bắt buộc)</label>{% call info("hash-info", "Giải thích mã SHA-256") %}Có mã băm thì đổi tên tệp vẫn bị nhận ra. Lấy bằng lệnh <span class="mono">certutil -hashfile game.exe SHA256</span>.{% endcall %}</div>
           <input id="appHash" class="input mono" placeholder="64 ký tự hex" autocomplete="off" spellcheck="false" maxlength="64">
-          <span class="help">Có mã băm thì đổi tên tệp vẫn bị nhận ra. Lấy bằng lệnh <span class="mono">certutil -hashfile game.exe SHA256</span>.</span>
         </div>
         <p class="error-text rule-form-wide" id="appError" role="alert" hidden></p>
       </form>
@@ -269,7 +285,7 @@
     </div>
 
     <div class="panel col-6">
-      <div class="panel-head"><h2 class="section-title">Tên miền</h2><span class="muted" id="domainCount"></span></div>
+      <div class="panel-head"><h2 class="section-title">Tên miền</h2><span class="muted" id="domainCount"></span>{% call info("domain-rules-info", "Giải thích quy tắc tên miền") %}Quy tắc cho một tên miền áp dụng cho cả tên miền con. Tìm kiếm an toàn (SafeSearch) luôn bật trên máy của con.{% endcall %}</div>
       <form class="rule-form" id="domainForm" novalidate>
         <div class="field"><label for="domainName">Tên miền</label><input id="domainName" class="input" placeholder="vd. example.com" autocomplete="off" spellcheck="false" inputmode="url"></div>
         <div class="field"><label for="domainCategory">Nhóm</label><select id="domainCategory" class="select"></select></div>
@@ -282,7 +298,6 @@
       </form>
       <div class="field rule-follow-up"><label for="domainFilter" class="sr-only">Lọc danh sách tên miền</label><input id="domainFilter" class="input" type="search" placeholder="Lọc danh sách..."></div>
       <ul class="rule-list section-follow-up" id="domainList"></ul>
-      <p class="help section-follow-up">Quy tắc cho một tên miền áp dụng cho cả tên miền con. Tìm kiếm an toàn (SafeSearch) luôn bật trên máy của con.</p>
     </div>
   </div>
 </section>
@@ -291,12 +306,27 @@
 <section class="tabpanel" role="tabpanel" id="panel-devices" aria-labelledby="tab-devices" hidden>
   <div class="cols">
     <div class="panel col-7">
-      <div class="panel-head"><h2 class="section-title">Thiết bị của {{ selected_child.display_name }}</h2><span class="muted">Quy định hiện tại: phiên bản {{ policy.version }}</span></div>
+      <div class="panel-head"><h2 class="section-title" id="devicesTitle" tabindex="-1">Thiết bị của {{ selected_child.display_name }}</h2><span class="muted">Quy định hiện tại: phiên bản {{ policy.version }}</span></div>
+      {% if devices %}
+      {% set live_n = devices|selectattr('realtime')|list|length %}
+      <section class="guard device-controls no-print" data-live="{{ live_n }}" data-total="{{ devices|length }}">
+        <header class="card-head"><h3 class="card-title">Lệnh Điều Khiển Khẩn</h3>{% call info("command-info", "Giải thích lệnh điều khiển") %}Mỗi lệnh được ký số và ghi vào nhật ký. "Tạm nghỉ 2 giờ" dừng toàn bộ kiểm soát từ lúc máy nhận lệnh, rồi tự bật lại.{% endcall %}
+          <span class="ghost-pill">{% if live_n %}<span class="status-dot is-on"></span>Lúc tải trang · {{ live_n }}/{{ devices|length }} máy có kênh khẩn{% elif online_n %}Lúc tải trang · {{ online_n }}/{{ devices|length }} máy có kết nối{% else %}Lúc tải trang · mất kết nối{% endif %}</span>
+        </header>
+        <p class="cmd-scope">Áp dụng cho {{ "cả " ~ devices|length ~ " thiết bị" if devices|length > 1 else "thiết bị" }} đã ghép của {{ selected_child.display_name }}.</p>
+        <div class="cmd-grid">
+          <button class="btn btn-danger cmd" data-command="LOCK_NOW">{{ icon('lock') }}Khóa máy ngay</button>
+          <button class="btn btn-quiet cmd" data-command="UNLOCK">{{ icon('unlock') }}Mở khóa</button>
+          <button class="btn btn-quiet cmd" data-command="ADD_TIME_15M" data-params='{"bonus_seconds": 900}'>{{ icon('clock-plus') }}Thêm 15 phút</button>
+          <button class="btn btn-quiet cmd" data-command="PARENT_PAUSE_2H" data-params='{"duration_seconds": 7200}'>{{ icon('pause') }}Tạm nghỉ 2 giờ</button>
+        </div>
+      </section>
+      {% endif %}
       {% for d in devices %}
         <div class="device">
           <div>
             <div class="device-name">{{ d.name }}
-              {% if d.online %}<span class="badge"><span class="dot"></span>Đang bật</span>{% else %}<span class="badge badge-off"><span class="dot"></span>Mất kết nối</span>{% endif %}
+              {% if d.online %}<span class="badge"><span class="dot"></span>Có kết nối</span>{% else %}<span class="badge badge-off"><span class="dot"></span>Mất kết nối</span>{% endif %}
               {% if d.clock_warning %}<span class="badge badge-warn">Đồng hồ lệch {{ d.clock_drift_sec }} giây</span>{% endif %}
             </div>
             <div class="small muted">Lần cuối: {{ d.last_seen }} · Đang áp dụng phiên bản {{ d.policy_version }}{% if not d.policy_current %} (chưa cập nhật){% endif %}{% if d.realtime %} · Kênh lệnh khẩn đang mở{% endif %}</div>
@@ -309,11 +339,11 @@
     </div>
 
     <div class="panel col-5 no-print">
-      <div class="panel-head"><h2 class="section-title">Ghép đôi thiết bị mới</h2></div>
+      <div class="panel-head"><h2 class="section-title">Ghép đôi thiết bị mới</h2>{% call info("pair-info", "Giải thích mã ghép đôi") %}Mã gồm 8 ký tự và hết hạn sau 10 phút. Lần đồng ý này được ghi vào nhật ký theo Nghị định 13/2023/NĐ-CP.{% endcall %}</div>
       <div class="stack-sm">
         <label class="check">
           <input type="checkbox" id="consent">
-          <span>Tôi là cha mẹ hoặc người giám hộ hợp pháp của <strong>{{ selected_child.display_name }}</strong>. Tôi đồng ý cài OGK trên máy của con để đồng hành và bảo vệ, không dùng để theo dõi lén.</span>
+          <span>Tôi là cha mẹ hoặc người giám hộ hợp pháp của <strong>{{ selected_child.display_name }}</strong>. Tôi đồng ý cài {{ app_name }} trên máy của con để đồng hành và bảo vệ, không dùng để theo dõi lén.</span>
         </label>
         <button class="btn" id="pairBtn" disabled>{{ icon('link') }}Tạo mã ghép đôi</button>
         <div id="pairResult" hidden>
@@ -325,7 +355,6 @@
             <button type="button" class="btn btn-sm btn-quiet" id="copyPair">{{ icon('copy') }}Sao chép lệnh</button>
           </div>
         </div>
-        <p class="help">Mã gồm 8 ký tự và hết hạn sau 10 phút. Lần đồng ý này được ghi vào nhật ký theo Nghị định 13/2023/NĐ-CP.</p>
       </div>
     </div>
   </div>
@@ -375,19 +404,16 @@
   </div>
 </dialog>
 
-  </div>
-</div>
 {% else %}
 <div class="page-head setup-head">
   <div>
-    <h1 class="page-title">Bắt đầu với OGK</h1>
+    <div class="row section-inset"><h1 class="page-title">Bắt đầu với {{ app_name }}</h1>{% call info("profile-info", "Giải thích hồ sơ trẻ") %}Mỗi hồ sơ có quy định riêng và có thể ghép với nhiều máy tính. Hồ sơ mới dùng sẵn quy định mặc định cho trẻ 6 đến 11 tuổi, bố mẹ sửa lại sau.{% endcall %}</div>
     <p class="muted small">Đăng nhập: {{ current_user.email }}</p>
   </div>
 </div>
 <div class="cols">
   <div class="panel col-7">
     <h2 class="section-title setup-title">Tạo hồ sơ cho con</h2>
-    <p class="lede section-inset">Mỗi hồ sơ có quy định riêng và có thể ghép với nhiều máy tính. Hồ sơ mới dùng sẵn quy định mặc định cho trẻ 6 đến 11 tuổi, bố mẹ sửa lại sau.</p>
     <form id="childForm" class="stack-sm setup-form" novalidate>
       <div class="field"><label for="childName">Tên gọi của con</label><input id="childName" class="input" maxlength="100" autocomplete="off"></div>
       <div class="field"><label for="childAge">Nhóm tuổi</label>

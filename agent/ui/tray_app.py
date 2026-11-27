@@ -14,6 +14,7 @@ import sys
 import threading
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional, Dict, Any, Callable, List
 import tkinter as tk
 from tkinter import messagebox
@@ -22,6 +23,8 @@ from PIL import Image, ImageDraw
 if __package__ in (None, ""):
     # OGK-Service launches this file directly: make the `agent` package importable
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from branding import APP_NAME
 
 from agent.ipc.pipe_protocol import IpcEnvelope, IpcClient
 from agent.ui import theme as ui_theme
@@ -81,12 +84,15 @@ GRACE_WARNING = "GRACE_PERIOD_60S"
 
 
 def create_tray_icon_image(state: str = "active") -> Image.Image:
-    """Generates a dynamic 64x64 RGBA icon based on protection state."""
+    """Show the app logo during normal operation and icons for special states."""
+    if state == "active":
+        with Image.open(Path(__file__).with_name("echo-kiddo-tray.png")) as logo:
+            return logo.convert("RGBA")
+
     img = Image.new("RGBA", (64, 64), color=(0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
     colors = {
-        "active": (46, 125, 50, 255),    # Forest green
         "warning": (245, 124, 0, 255),   # Orange
         "locked": (198, 40, 40, 255),    # Red
         "paused": (21, 101, 192, 255),   # Blue
@@ -96,11 +102,7 @@ def create_tray_icon_image(state: str = "active") -> Image.Image:
     # Draw rounded shield / circle
     draw.ellipse([4, 4, 60, 60], fill=fill_color, outline=(255, 255, 255, 220), width=3)
 
-    if state == "active":
-        # Draw white checkmark
-        draw.line([20, 32, 28, 42], fill=(255, 255, 255, 255), width=4)
-        draw.line([28, 42, 45, 22], fill=(255, 255, 255, 255), width=4)
-    elif state == "locked":
+    if state == "locked":
         # Draw white lock body
         draw.rectangle([22, 28, 42, 46], fill=(255, 255, 255, 255))
         draw.arc([24, 18, 40, 32], start=180, end=0, fill=(255, 255, 255, 255), width=3)
@@ -235,7 +237,7 @@ class TrayApplication:
                 self.last_warning_shown = warning
                 minutes = QUOTA_WARNING_MINUTES[warning]
                 self.show_warning_dialog(
-                    "OGK - Sắp hết giờ sử dụng",
+                    f"{APP_NAME} - Sắp hết giờ",
                     f"Em còn khoảng {minutes} phút sử dụng máy tính hôm nay. "
                     "Hãy lưu lại bài đang làm nhé!",
                 )
@@ -264,12 +266,12 @@ class TrayApplication:
 
     def build_tooltip(self) -> str:
         if self.unprotected_halt:
-            return "OGK - Đang tạm dừng bảo vệ"
+            return f"{APP_NAME} - Đang tạm dừng bảo vệ"
         if self.is_parent_paused:
-            return "OGK - Bố mẹ đang cho tạm nghỉ"
+            return f"{APP_NAME} - Bố mẹ đang cho tạm nghỉ"
         if self.is_locked:
-            return "OGK - Đã hết giờ / ngoài khung giờ"
-        return f"OGK - Còn lại {max(0, self.remaining_sec) // 60} phút hôm nay"
+            return f"{APP_NAME} - Đã hết giờ / ngoài khung giờ"
+        return f"{APP_NAME} - Còn lại {max(0, self.remaining_sec) // 60} phút hôm nay"
 
     def _refresh_icon(self) -> None:
         """Reflects state on the tray icon (colour) and tooltip (time left)."""
@@ -365,7 +367,7 @@ class TrayApplication:
             return
 
         def _popup():
-            win, body = ui_theme.make_window(title, title, tone="warn", width=440)
+            win, body = ui_theme.make_window(title, title.removeprefix(f"{APP_NAME} - "), tone="warn", width=440)
             ui_theme.body_text(body, message, wraplength=380, pady=(0, 18))
             row = tk.Frame(body, bg=ui_theme.PAPER)
             row.pack(fill="x")
@@ -389,7 +391,7 @@ class TrayApplication:
 
         def _countdown():
             win, body = ui_theme.make_window(
-                "OGK - Hết giờ sử dụng", "Đã hết thời gian dùng máy hôm nay", tone="warn", width=540,
+                f"{APP_NAME} - Hết giờ", "Đã hết thời gian dùng máy hôm nay", tone="warn", width=540,
             )
             root = win
             ui_theme.body_text(
@@ -427,8 +429,8 @@ class TrayApplication:
             def _on_parent_pin():
                 self.show_parent_pin_dialog(root, _close)
 
-            ui_theme.PillButton(btn_frame, "Xin thêm 15 phút", _on_req, style="warn").pack(side="left")
-            ui_theme.PillButton(btn_frame, "Đã lưu xong", _on_done).pack(side="left", padx=8)
+            ui_theme.PillButton(btn_frame, "Xin thêm 15 phút", _on_req).pack(side="left")
+            ui_theme.PillButton(btn_frame, "Đã lưu xong", _on_done, style="quiet").pack(side="left", padx=8)
             ui_theme.PillButton(btn_frame, "Bố mẹ mở khóa", _on_parent_pin, style="quiet").pack(side="left")
 
             win.protocol("WM_DELETE_WINDOW", _close)
@@ -459,23 +461,22 @@ class TrayApplication:
 
         def _screen():
             win, body = ui_theme.make_window(
-                "OGK - Hôm nay em đã dùng gì?", "Hôm nay em đã dùng máy tính thế nào?",
+                f"{APP_NAME} - Hôm nay em đã dùng gì?", "Hôm nay em đã dùng gì?",
                 tone="ok", parent=tk._default_root, topmost=False, width=640,
                 subtitle="Bố mẹ và em cùng xem chung những con số này.",
             )
 
             used_min = self.used_total_sec // 60
-            remain_min = self.remaining_sec // 60
+            remain_min = max(0, self.remaining_sec) // 60
+            total_min = used_min + remain_min
 
-            tiles = tk.Frame(body, bg=ui_theme.PAPER)
-            tiles.pack(fill="x", pady=(0, 16))
-            for i, (label, value) in enumerate((("Đã dùng hôm nay", used_min), ("Còn lại hôm nay", remain_min))):
-                tile = tk.Frame(tiles, bg=ui_theme.GREEN_WASH)
-                tile.pack(side="left", fill="x", expand=True, padx=(0, 10) if i == 0 else 0)
-                tk.Label(tile, text=label, font=ui_theme.ui_font(win, 9, "bold"), fg=ui_theme.INK_2,
-                         bg=ui_theme.GREEN_WASH, anchor="w").pack(fill="x", padx=14, pady=(10, 0))
-                tk.Label(tile, text=f"{value} phút", font=ui_theme.ui_font(win, 22, "bold"),
-                         fg=ui_theme.GREEN_DEEP, bg=ui_theme.GREEN_WASH, anchor="w").pack(fill="x", padx=14, pady=(0, 10))
+            ui_theme.body_text(body, f"Em còn {remain_min} phút hôm nay.", wraplength=570, size=22, bold=True)
+            ui_theme.body_text(body, f"Em đã dùng {used_min} / {total_min} phút", size=10,
+                               color=ui_theme.INK_3, pady=(2, 8))
+            today_bar = ui_theme.ProgressBar(body, width=580, height=8)
+            today_bar.set(used_min / total_min if total_min else 1.0, None if remain_min else ui_theme.RED)
+            today_bar.pack(anchor="w", pady=(0, 14))
+            tk.Frame(body, bg=ui_theme.RULE, height=1).pack(fill="x", pady=(0, 14))
 
             # Top apps / websites of today (exe names and site names only)
             def _fmt_duration(sec: int) -> str:
@@ -484,7 +485,7 @@ class TrayApplication:
             def _column(parent, title, rows, pad):
                 col = tk.Frame(parent, bg=ui_theme.PAPER)
                 col.pack(side="left", fill="both", expand=True, padx=pad)
-                tk.Label(col, text=title.upper(), font=ui_theme.ui_font(win, 9, "bold"), fg=ui_theme.INK,
+                tk.Label(col, text=title, font=ui_theme.ui_font(win, 11, "bold"), fg=ui_theme.INK,
                          bg=ui_theme.PAPER, anchor="w").pack(fill="x", pady=(0, 8))
                 if not rows:
                     tk.Label(col, text="Chưa có dữ liệu", font=ui_theme.ui_font(win, 9), fg=ui_theme.INK_3,
@@ -498,8 +499,8 @@ class TrayApplication:
                              bg=ui_theme.PAPER, anchor="w").pack(side="left")
                     tk.Label(line, text=value_text, font=ui_theme.ui_font(win, 9), fg=ui_theme.INK_2,
                              bg=ui_theme.PAPER).pack(side="right")
-                    meter = ui_theme.ProgressBar(col, width=250, height=6,
-                                                 color=ui_theme.RED if blocked else ui_theme.GREEN_MID)
+                    meter = ui_theme.ProgressBar(col, width=276, height=6,
+                                                 color=ui_theme.RED if blocked else ui_theme.ACCENT)
                     meter.set(weight / top)
                     meter.pack(anchor="w", pady=(2, 2 if not blocked else 0))
                     if blocked:
@@ -525,8 +526,7 @@ class TrayApplication:
             # Transparency explanation
             note = ui_theme.callout(
                 body,
-                "OGK là người bạn đồng hành minh bạch. Hệ thống không chụp ảnh màn hình "
-                "và không đọc tin nhắn của em.",
+                f"{APP_NAME} không chụp ảnh màn hình và không đọc tin nhắn của em.",
                 tone="ok", wraplength=580,
             )
             note.pack(fill="x", pady=(8, 16))
@@ -549,7 +549,7 @@ class TrayApplication:
 
         def _popup():
             win, body = ui_theme.make_window(
-                "OGK - Thông báo an toàn", "Ứng dụng hoặc trang web này đang bị hạn chế",
+                f"{APP_NAME} - Thông báo", "Ứng dụng hoặc trang web này đang bị hạn chế",
                 tone="danger", width=460,
             )
             ui_theme.body_text(
@@ -575,7 +575,7 @@ class TrayApplication:
 
         def _popup():
             win, body = ui_theme.make_window(
-                "OGK - Nhắc nhở nghỉ mắt", "Quy tắc 20-20-20: bảo vệ mắt của em", tone="ok", width=440,
+                f"{APP_NAME} - Nghỉ mắt", "Quy tắc 20-20-20: bảo vệ mắt của em", tone="ok", width=440,
             )
             ui_theme.body_text(
                 body,
@@ -646,7 +646,7 @@ def main() -> int:
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Thoát (cần bố mẹ)", lambda: app.request_exit()),
         )
-        icon = pystray.Icon("OGK-Tray", icon_img, "Open Guardian for Kids", menu)
+        icon = pystray.Icon("OGK-Tray", icon_img, APP_NAME, menu)
         app.tray_icon = icon
 
         def _on_icon_ready(ic):

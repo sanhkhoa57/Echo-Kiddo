@@ -90,8 +90,14 @@ Setting `OGK_ALLOW_SYSTEM_CHANGES=1` disables that guard, so don't set it in tes
 
 ## UI work
 
-`PRODUCT.md` and `.impeccable/` hold the dashboard's design context. The visual world is a calm mint-and-sage companion app (modelled on the lecturer's prototype screenshots): pale cool gradient ground, rounded white cards, a sage-green app bar, a left sidebar on desktop and a bottom tab bar on phones, amber for weekends, red only for destructive actions, Be Vietnam Pro throughout. Rules for changes:
-- Keep the existing tokens in `dashboard/static/styles.css`.
+`PRODUCT.md` and `.impeccable/` hold the dashboard's design context. Since 2026-11-27 the visual world follows a clinical-console reference the user supplied (it replaced the earlier mint-and-sage look):
+- cool grey ground with one soft app frame, flat white cards with hairline borders;
+- a single blue accent (`--accent`), near-black navy for contrast, diagonal hatching for "remaining" and weekends;
+- top bar with the child pill, quick-action pills and round icon buttons; a narrow icon rail on desktop that becomes a bottom tab bar on phones;
+- red only for errors, over-limit and destructive actions; Be Vietnam Pro throughout.
+
+Rules for changes:
+- Keep the existing tokens in `dashboard/static/styles.css` (`--accent*`, `--navy`, `--rule`, `--red*` and friends).
 - Put hover styles inside the `@media (hover: hover)` block.
 - The UI must work at phone width (390 px).
 - The child's tray dialogs (`agent/ui/tray_app.py`) share one look through `agent/ui/theme.py` (same colour values as the CSS tokens, pill buttons, no emoji). Add new dialogs with `make_window`/`PillButton` rather than raw Tk widgets.

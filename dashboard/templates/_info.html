@@ -1,0 +1,8 @@
+{% macro info(id, label="Thông tin") -%}
+<span class="info-note">
+  <button type="button" class="info-trigger" aria-label="{{ label }}" aria-describedby="{{ id }}" data-info="{{ id }}">
+    <svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>
+  </button>
+  <span id="{{ id }}" class="info-popover" role="tooltip" popover="manual" hidden>{{ caller() }}</span>
+</span>
+{%- endmacro %}

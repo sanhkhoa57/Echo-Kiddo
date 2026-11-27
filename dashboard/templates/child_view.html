@@ -1,30 +1,21 @@
 {% extends "base.html" %}
+{% from "_info.html" import info %}
+{% from "_profile_picker.html" import profile_picker %}
 {% set active_nav = 'child' %}
 
-{% block title %}Hôm nay em đã dùng gì? - OGK{% endblock %}
+{% block title %}Hôm nay em đã dùng gì? - {{ app_name }}{% endblock %}
+{% block body_class %}guardian-dashboard{% endblock %}
+{% block topbar_center %}{{ profile_picker(child, children, "/child-view") }}{% endblock %}
 {% block page_class %}kid{% endblock %}
 
 {% macro icon(name) %}<svg class="icon" aria-hidden="true"><use href="#i-{{ name }}"/></svg>{% endmacro %}
 
 {% block content %}
+{% if not current_user or not child %}
 <div class="page-head kid-head">
-  <div>
-    <h1 class="page-title">{% if child %}Chào {{ child.display_name }}!{% else %}Hôm nay em đã dùng gì?{% endif %}</h1>
-    <p class="lede intro-copy">
-      Em và bố mẹ cùng xem được những gì OGK ghi lại.
-    </p>
-  </div>
-  {% if children|length > 1 %}
-    <div class="child-switch no-print">
-      <label for="kidSelect" class="label">Chọn bạn</label>
-      <select id="kidSelect" class="select select-fit">
-        {% for c in children %}
-          <option value="{{ c.id }}" {% if child and child.id == c.id %}selected{% endif %}>{{ c.display_name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-  {% endif %}
+  <h1 class="page-title">Hôm nay em đã dùng gì?</h1>
 </div>
+{% endif %}
 
 {% if not current_user %}
   <div class="empty">
@@ -38,57 +29,48 @@
     Bố mẹ cần tạo hồ sơ cho em để máy bắt đầu đếm giờ.
   </div>
 {% else %}
-<div class="stack">
-  <!-- Hero: Thời gian hôm nay -->
-  <section class="panel kid-hero" aria-labelledby="kidTimeTitle">
-    <div class="kid-time">
-      <h2 id="kidTimeTitle">{{ 'Hôm nay em hết giờ rồi' if today.over else 'Hôm nay em còn' }}</h2>
-      <p class="kid-big{% if today.over %} is-out{% endif %}">{{ today.remaining_text }}</p>
-    </div>
-    <svg viewBox="0 0 120 120" aria-hidden="true">
-      <circle class="kid-clock-face" cx="60" cy="60" r="52" stroke-width="4"/>
-      <circle class="kid-clock-inner" cx="60" cy="60" r="42" stroke-width="2"/>
-      <path class="kid-clock-hand{% if today.over %} is-out{% endif %}" d="M60 26v34l22 13" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle class="kid-clock-pin" cx="60" cy="60" r="4.5"/>
-      <path class="kid-clock-ticks" d="M60 14v5M60 101v5M14 60h5M101 60h5" stroke-width="2.5" stroke-linecap="round"/>
-    </svg>
-    <div class="kid-time-detail">
-      <div class="meter" role="img" aria-label="Đã dùng {{ today.pct }}% thời gian cho phép hôm nay">
-        <span style="--pct: {{ today.pct }}%"></span>
-      </div>
-      <p>Em đã dùng <strong>{{ today.used_text }}</strong> trong <strong>{{ today.limit_text }}</strong>.</p>
-      <p class="muted">{{ today.weekday_name }}, ngày {{ today.day }} tháng {{ today.month }}</p>
-      {% if today.over %}<p><strong>Hết giờ rồi!</strong> Em nhớ lưu bài nhé.</p>{% endif %}
-      <p class="muted">Đồng hồ dừng khi em khóa màn hình hoặc ngừng dùng máy quá 5 phút.</p>
-    </div>
-  </section>
+{% set no_quota = not today.limit_min %}
+<div class="home">
 
-  {% if current_user and child and (current_user.session_role or current_user.role) in ['parent', 'admin'] %}
-    <form method="POST" action="/child-view/start" class="no-print kid-handoff">
+  <article class="card today-summary">
+    <header class="card-head">
+      <h1 class="card-title">Chào {{ child.display_name }}!</h1>
+      <span class="card-head-actions">
+        <span class="ghost-pill">{{ today.weekday_name }}, ngày {{ today.day }} tháng {{ today.month }}</span>
+        {% call info("kid-time-info", "Giải thích cách tính giờ") %}Đồng hồ dừng khi em khóa màn hình hoặc ngừng dùng máy quá 5 phút. Em và bố mẹ cùng xem được những gì {{ app_name }} ghi lại.{% endcall %}
+      </span>
+    </header>
+    <p class="today-balance">
+      {% if no_quota %}Hôm nay em không có giờ dùng máy.
+      {% elif today.over %}Hôm nay em hết giờ rồi. Em nhớ lưu bài nhé.
+      {% else %}Em còn {{ today.remaining_text }} hôm nay.{% endif %}
+    </p>
+    {% if not no_quota %}
+      <p class="today-used num">Em đã dùng {{ today.used_min }} / {{ today.limit_min }} phút</p>
+      <progress class="today-progress {{ 'is-over' if today.over else '' }}" value="{{ [today.used_min, today.limit_min]|min }}" max="{{ today.limit_min }}" aria-label="Thời gian đã dùng hôm nay"></progress>
+    {% endif %}
+    <div class="today-status">
+      <span>{{ icon('shield') }}<span class="num">{{ report.blocked_today }}</span> lần chặn hôm nay</span>
+    </div>
+  </article>
+
+  {% if (current_user.session_role or current_user.role) in ['parent', 'admin'] %}
+    <form method="POST" action="/child-view/start" class="card kid-handoff no-print">
       <input type="hidden" name="child_id" value="{{ child.id }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <button type="submit" class="btn btn-quiet">{{ icon('child') }}Giao máy cho {{ child.display_name }} xem (chế độ chỉ xem)</button>
-      <span class="small muted">Bố mẹ sẽ đăng xuất. Con vẫn xem được trang này và nhật ký.</span>
+      <p>{{ icon('child') }}<span>Bố mẹ sẽ đăng xuất. Con vẫn xem được trang này và nhật ký.</span></p>
+      <button type="submit" class="chip chip-link">Giao máy cho {{ child.display_name }} xem (chế độ chỉ xem){{ icon('arrow') }}</button>
     </form>
   {% endif %}
 
-  <!-- Khung giờ hôm nay -->
-  <section class="panel" aria-label="Khung giờ được dùng máy hôm nay">
-    <div class="panel-head">
-      <h2 class="section-title">Giờ được dùng máy hôm nay</h2>
+  <article class="card" aria-labelledby="kidSlotsTitle">
+    <header class="card-head">
+      <h2 class="card-title" id="kidSlotsTitle">Giờ được dùng máy hôm nay</h2>
       <div class="legend">
         <span><i class="slot-on"></i>Giờ được dùng</span>
         <span><i class="slot-off"></i>Giờ nghỉ</span>
       </div>
-    </div>
-    <div class="daystrip" role="img" aria-label="Lịch 24 giờ hôm nay chia thành 48 ô 30 phút" aria-describedby="kidTimeSlots">
-      {% for slot in today_slots %}
-        <i class="{{ 'slot-on' if slot == '1' else 'slot-off' }}" title="{{ '%02d:%02d'|format(loop.index0 // 2, (loop.index0 % 2) * 30) }} - {{ 'Được dùng' if slot == '1' else 'Giờ nghỉ' }}"></i>
-      {% endfor %}
-    </div>
-    <div class="daystrip-hours" aria-hidden="true">
-      <span>0h</span><span>3h</span><span>6h</span><span>9h</span><span>12h</span><span>15h</span><span>18h</span><span>21h</span>
-    </div>
+    </header>
     {% set allowed = namespace(start=0, ranges=[]) %}
     {% for slot in today_slots %}
       {% if slot == '1' %}
@@ -100,107 +82,114 @@
         {% endif %}
       {% endif %}
     {% endfor %}
-    <p class="section-follow-up" id="kidTimeSlots">
+    <p class="kid-slots-text" id="kidTimeSlots">
       {% if allowed.ranges %}Em được dùng máy từ {{ allowed.ranges|join(', ') }}.
       {% else %}Hôm nay không có giờ dùng máy.{% endif %}
     </p>
-  </section>
+    <div class="daystrip" role="img" aria-label="Lịch 24 giờ hôm nay chia thành 48 ô 30 phút" aria-describedby="kidTimeSlots">
+      {% for slot in today_slots %}
+        <i class="{{ 'slot-on' if slot == '1' else 'slot-off' }}" title="{{ '%02d:%02d'|format(loop.index0 // 2, (loop.index0 % 2) * 30) }} - {{ 'Được dùng' if slot == '1' else 'Giờ nghỉ' }}"></i>
+      {% endfor %}
+    </div>
+    <div class="daystrip-hours" aria-hidden="true">
+      <span>0h</span><span>3h</span><span>6h</span><span>9h</span><span>12h</span><span>15h</span><span>18h</span><span>21h</span>
+    </div>
+  </article>
 
-  <!-- Lời hứa minh bạch -->
-  <section class="panel" aria-label="Những điều OGK không làm">
-    <div class="panel-head">
-      <h2 class="section-title">OGK giữ bí mật cho em</h2>
+  <article class="card area-week">
+    <header class="card-head"><h2 class="card-title">Em đã dùng máy trong 7 ngày qua</h2>{% call info("kid-week-info", "Giải thích biểu đồ tuần") %}Mỗi cột là một ngày. Số bên trái là số phút. Bấm hoặc chạm vào cột để xem.<span class="wchart-swipe"> Vuốt ngang để xem đủ 7 ngày.</span>{% endcall %}</header>
+    {% if week.has_data %}
+      {% set peak = week.bars|map(attribute='minutes')|max %}
+      <div class="week-top">
+        <p class="week-total num">{{ week.total_text }}</p>
+        <ul class="week-legend" aria-hidden="true">
+          <li><i class="lg lg-day"></i>Ngày thường</li>
+          <li><i class="lg lg-weekend"></i>Cuối tuần</li>
+          <li><i class="lg lg-today"></i>Hôm nay</li>
+        </ul>
+      </div>
+      <div class="weekchart" role="group" aria-label="Biểu đồ thời lượng dùng máy 7 ngày qua, tổng {{ week.total_text }}">
+        {% set mid = (peak / 2)|round|int %}<div class="wchart-axis num" aria-hidden="true"><div class="wchart-scale"><span style="--at: 100%">{{ peak }}</span>{% if 0 < mid < peak %}<span style="--at: {{ (mid * 100 / peak)|round(1) }}%">{{ mid }}</span>{% endif %}<span style="--at: 0%">0</span></div></div>
+        <div class="wchart-bars">
+          {% for b in week.bars %}
+            <button type="button" class="wbar {% if b.is_weekend %}is-weekend{% endif %} {% if b.is_today %}is-today{% endif %} {% if not b.minutes %}is-zero{% endif %}" aria-pressed="false" aria-label="{{ b.label }} {{ b.date }}{{ ', hôm nay' if b.is_today }}: {{ b.text }}, {{ b.blocked }} lần chặn">
+              <span class="wbar-track"><span class="wbar-fill" style="--pct: {{ b.pct }}%"></span><span class="wbar-tip num" style="--pct: {{ b.pct }}%">{{ b.minutes }} phút</span></span>
+              <span class="wbar-label">{{ b.label }}<small>{{ b.date }}</small></span>
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+    {% else %}
+      <div class="empty">Chưa có dữ liệu trong 7 ngày qua.</div>
+    {% endif %}
+  </article>
+
+  <div class="report-grid kid-grid">
+    <article class="card">
+      <header class="card-head"><h2 class="card-title">Ứng dụng em đã mở</h2><span class="ghost-pill">7 ngày</span></header>
+      {% if top_apps %}
+        <div class="hbars">
+          {% for a in top_apps %}
+            <div class="hbar"><span class="hbar-name" title="{{ a.subject }}">{{ a.subject }}</span><span class="hbar-val">{{ a.text }}</span><div class="hbar-track"><span style="--pct: {{ a.pct }}%"></span></div></div>
+          {% endfor %}
+        </div>
+      {% else %}<div class="empty">Chưa có ứng dụng nào trong 7 ngày qua.</div>{% endif %}
+    </article>
+
+    <article class="card">
+      <header class="card-head"><h2 class="card-title">Trang web em đã vào</h2>{% call info("kid-domain-info", "Giải thích dữ liệu trang web") %}{{ app_name }} chỉ lưu tên trang web, ví dụ youtube.com. Video và các trang con em mở sẽ không được lưu.{% endcall %}<span class="ghost-pill">7 ngày</span></header>
+      {% if top_domains %}
+        <div class="hbars">
+          {% for d in top_domains %}
+            <div class="hbar"><span class="hbar-name" title="{{ d.subject }}">{{ d.subject }}</span><span class="hbar-val">{{ d.queries }} lượt</span><div class="hbar-track"><span style="--pct: {{ d.pct }}%"></span></div></div>
+          {% endfor %}
+        </div>
+      {% else %}<div class="empty">Chưa có trang web nào trong 7 ngày qua.</div>{% endif %}
+    </article>
+  </div>
+
+  {% if report.recent_blocks %}
+    <article class="card">
+      <header class="card-head"><h2 class="card-title">Những lần bị chặn</h2><span class="ghost-pill num">{{ report.total_blocked_events }} lần trong 7 ngày</span></header>
+      <ul class="list">
+        {% for b in report.recent_blocks[:6] %}
+          <li>
+            <span class="hbar-name" title="{{ b.subject }}">{{ b.subject }}</span>
+            <span class="row block-meta"><span class="badge badge-block">{{ 'Ứng dụng' if b.kind == 'app' else 'Trang web' }}</span><span class="small muted num nowrap">{{ b.local_time or b.ts[:16] }}</span></span>
+          </li>
+        {% endfor %}
+      </ul>
+    </article>
+  {% endif %}
+
+  <article class="card" aria-label="Những điều {{ app_name }} không làm">
+    <div class="card-head">
+      <h2 class="card-title">Những điều {{ app_name }} không làm</h2>
     </div>
     <div class="promise">
       <div>
         {{ icon('camera-off') }}
         <span>Không chụp ảnh màn hình</span>
-        <span class="muted promise-detail">OGK không chụp lại bài em làm.</span>
+        <span class="muted promise-detail">{{ app_name }} không chụp lại bài em làm.</span>
       </div>
       <div>
         {{ icon('chat-off') }}
         <span>Không đọc tin nhắn</span>
-        <span class="muted promise-detail">OGK cũng không đọc từ khóa em tìm.</span>
+        <span class="muted promise-detail">{{ app_name }} cũng không đọc từ khóa em tìm.</span>
       </div>
       <div>
         {{ icon('eye-off') }}
-        <span>OGK không chạy ẩn</span>
+        <span>{{ app_name }} không chạy ẩn</span>
         <span class="muted promise-detail">Em thấy đồng hồ ở góc màn hình.</span>
       </div>
     </div>
-  </section>
+  </article>
 
-  <!-- Top ứng dụng và trang web -->
-  <div class="cols">
-    <section class="panel col-6" aria-label="Ứng dụng em đã mở">
-      <div class="panel-head">
-        <h2 class="section-title">Ứng dụng em đã mở</h2>
-        <span class="muted">7 ngày qua</span>
-      </div>
-      {% if top_apps %}
-        <div class="hbars">
-          {% for a in top_apps %}
-            <div class="hbar">
-              <span class="hbar-name" title="{{ a.subject }}">{{ a.subject }}</span>
-              <span class="hbar-val">{{ a.text }}</span>
-              <div class="hbar-track"><span style="--pct: {{ a.pct }}%"></span></div>
-            </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="empty">Chưa có ứng dụng nào trong 7 ngày qua.</div>
-      {% endif %}
-    </section>
-
-    <section class="panel col-6" aria-label="Trang web em đã vào">
-      <div class="panel-head">
-        <h2 class="section-title">Trang web em đã vào</h2>
-        <span class="muted">7 ngày qua</span>
-      </div>
-      {% if top_domains %}
-        <div class="hbars">
-          {% for d in top_domains %}
-            <div class="hbar">
-              <span class="hbar-name" title="{{ d.subject }}">{{ d.subject }}</span>
-              <span class="hbar-val">{{ d.queries }} lượt</span>
-              <div class="hbar-track"><span style="--pct: {{ d.pct }}%"></span></div>
-            </div>
-          {% endfor %}
-        </div>
-        <p class="help kid-domain-note">OGK chỉ lưu tên trang web, ví dụ youtube.com. Video và các trang con em mở sẽ không được lưu.</p>
-      {% else %}
-        <div class="empty">Chưa có trang web nào trong 7 ngày qua.</div>
-      {% endif %}
-    </section>
+<div class="card today-devices kid-audit-link">
+    <p>{{ icon('list') }}<span>Em xem được những lần bố mẹ đổi giờ dùng máy hoặc đổi quy định.</span></p>
+    <a href="/audit/view" class="chip chip-link">Xem nhật ký thay đổi{{ icon('arrow') }}</a>
   </div>
-
-  <!-- Lần chặn gần đây (nếu có) -->
-  {% if report.recent_blocks %}
-    <section class="panel" aria-label="Những thứ đã bị chặn gần đây">
-      <div class="panel-head">
-        <h2 class="section-title">Những lần bị chặn</h2>
-        <span class="muted">{{ report.total_blocked_events }} lần trong 7 ngày</span>
-      </div>
-      <ul class="list">
-        {% for b in report.recent_blocks[:6] %}
-          <li>
-            <div>
-              <strong>{{ b.subject }}</strong>
-              <span class="badge badge-block">{{ 'Ứng dụng' if b.kind == 'app' else 'Trang web' }}</span>
-            </div>
-            <span class="small muted num">{{ b.local_time or b.ts[:16] }}</span>
-          </li>
-        {% endfor %}
-      </ul>
-    </section>
-  {% endif %}
-
-  <!-- Liên kết nhật ký kiểm toán -->
-  <div class="row row-between kid-audit-link">
-    <p class="muted">Em xem được những lần bố mẹ đổi giờ dùng máy hoặc đổi quy định.</p>
-    <a href="/audit/view" class="btn btn-quiet">{{ icon('list') }}Xem nhật ký thay đổi</a>
-  </div>
-  {% if current_user and (current_user.session_role or '') == 'child-view' %}
+  {% if (current_user.session_role or '') == 'child-view' %}
     <p class="small muted no-print">Em đang ở chế độ chỉ xem. Bố mẹ có thể đăng xuất rồi đăng nhập lại để đổi quy định.</p>
   {% endif %}
 </div>

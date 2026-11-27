@@ -1,15 +1,15 @@
 # Chính Sách & Minh Bạch Quyền Riêng Tư (Privacy Specification)
 
-> **Dự án OGK (Open Guardian for Kids) — Tuân thủ Nghị định 13/2023/NĐ-CP về Bảo vệ Dữ liệu Cá nhân**
+> **Dự án EC - Echo Kiddo — Tuân thủ Nghị định 13/2023/NĐ-CP về Bảo vệ Dữ liệu Cá nhân**
 
 ---
 
 ## 1. Tuyên Ngôn Quyền Riêng Tư Dành Cho Trẻ Em (Phiên Bản Dễ Hiểu)
 
-Chào em! Phần mềm **OGK** trên máy tính này là một người bạn đồng hành giúp em và bố mẹ cùng nhau sắp xếp thời gian học tập và vui chơi hợp lý:
-- **Biết rõ giờ giấc**: Biểu tượng OGK ở góc màn hình cho em biết hôm nay em còn bao nhiêu thời gian sử dụng máy tính.
-- **Không bao giờ lén lút**: OGK không bao giờ chạy ẩn. Nếu biểu tượng biến mất, phần mềm sẽ tự động dừng lại.
-- **Bảo vệ sự riêng tư**: OGK **KHÔNG** chụp ảnh màn hình, **KHÔNG** đọc tin nhắn, **KHÔNG** ghi lại mật khẩu hay những gì em gõ trên bàn phím, và **KHÔNG** lưu lại đường link chi tiết hay video cụ thể em xem. OGK chỉ ghi nhận tên trang web chính (như `youtube.com` hay `wikipedia.org`) để giúp em và bố mẹ theo dõi tổng thời gian.
+Chào em! Phần mềm **EC - Echo Kiddo** trên máy tính này là một người bạn đồng hành giúp em và bố mẹ cùng nhau sắp xếp thời gian học tập và vui chơi hợp lý:
+- **Biết rõ giờ giấc**: Biểu tượng EC - Echo Kiddo ở góc màn hình cho em biết hôm nay em còn bao nhiêu thời gian sử dụng máy tính.
+- **Không bao giờ lén lút**: EC - Echo Kiddo không bao giờ chạy ẩn. Nếu biểu tượng biến mất, phần mềm sẽ tự động dừng lại.
+- **Bảo vệ sự riêng tư**: EC - Echo Kiddo **KHÔNG** chụp ảnh màn hình, **KHÔNG** đọc tin nhắn, **KHÔNG** ghi lại mật khẩu hay những gì em gõ trên bàn phím, và **KHÔNG** lưu lại đường link chi tiết hay video cụ thể em xem. EC - Echo Kiddo chỉ ghi nhận tên trang web chính (như `youtube.com` hay `wikipedia.org`) để giúp em và bố mẹ theo dõi tổng thời gian.
 - **Minh bạch 100%**: Em có thể bấm vào *"Hôm nay em đã dùng gì"* để xem chính xác những gì bố mẹ nhìn thấy, và xem cả lịch sử bố mẹ đã thay đổi quy định như thế nào.
 
 ---

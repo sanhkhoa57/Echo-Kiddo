@@ -101,7 +101,7 @@ def perform_clean_rollback(
     Requires parent PIN verification unless force=True.
     """
     logger.info("==================================================")
-    logger.info("   OGK System Clean Rollback and Uninstallation   ")
+    logger.info("   EC - Echo Kiddo System Clean Rollback and Uninstallation   ")
     logger.info("==================================================")
 
     # 1. Parent authorization check
@@ -167,7 +167,7 @@ def perform_clean_rollback(
 
     # 5. Stop and unregister Windows Service
     if remove_service and _IS_WINDOWS:
-        logger.info("Bước 4/4: Đang dừng và hủy đăng ký OGK Windows Service...")
+        logger.info("Bước 4/4: Đang dừng và hủy đăng ký dịch vụ Windows của EC - Echo Kiddo...")
         try:
             # Stop service
             subprocess.run(["sc.exe", "stop", "OGKService"], capture_output=True, check=False)
@@ -196,7 +196,7 @@ def perform_clean_rollback(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="OGK Clean Uninstallation and Rollback Utility")
+    parser = argparse.ArgumentParser(description="EC - Echo Kiddo Clean Uninstallation and Rollback Utility")
     parser.add_argument("--pin", type=str, help="Parent offline authorization PIN")
     parser.add_argument("--force", action="store_true", help="Bypass PIN prompt for automated testing")
     parser.add_argument("--no-service", action="store_true", help="Do not attempt to delete Windows Service")

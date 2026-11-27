@@ -12,7 +12,6 @@ from reportlab.lib.units import cm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
-    PageBreak,
     Paragraph,
     Preformatted,
     SimpleDocTemplate,
@@ -84,6 +83,7 @@ def make_styles() -> dict[str, ParagraphStyle]:
             textColor=colors.HexColor("#074A38"),
             spaceBefore=14,
             spaceAfter=6,
+            keepWithNext=True,
         ),
         "H2": ParagraphStyle(
             "OGKH2",
@@ -107,7 +107,7 @@ def make_styles() -> dict[str, ParagraphStyle]:
         "Code": ParagraphStyle(
             "OGKCode",
             parent=base["Code"],
-            fontName="Courier",
+            fontName="VietRegular",
             fontSize=8.5,
             leading=11.5,
             leftIndent=8,
@@ -168,18 +168,18 @@ def build_pdf() -> Path:
         rightMargin=1.8 * cm,
         topMargin=2.0 * cm,
         bottomMargin=2.0 * cm,
-        title="Báo Cáo Kỹ Thuật Hệ Thống và Mạng (M1-M6) - OGK",
+        title="Báo Cáo Kỹ Thuật Hệ Thống và Mạng (M1-M6) - EC - Echo Kiddo",
     )
 
     story = []
     story.append(Paragraph("PHỤ LỤC KỸ THUẬT HỆ THỐNG VÀ MẠNG (M1–M6)", styles["Title"]))
-    story.append(Paragraph("Đề tài: OGK (Open Guardian for Kids) — Môn Mạng Máy Tính", styles["Subtitle"]))
+    story.append(Paragraph("Đề tài: EC - Echo Kiddo — Môn Mạng Máy Tính", styles["Subtitle"]))
 
     # ==================== M1 ====================
     story.append(Paragraph("M1. Sơ Đồ Luồng Gói Tin Khi Trẻ Mở Một Trang Bị Chặn", styles["H1"]))
     story.append(
         Paragraph(
-            "Khi OGK-Service hoạt động, NetworkDnsGuard (agent/platform/network_guard.py) cấu hình DNS của card mạng đang hoạt động về 127.0.0.1 "
+            "Khi EC Service hoạt động, NetworkDnsGuard (agent/platform/network_guard.py) cấu hình DNS của card mạng đang hoạt động về 127.0.0.1 "
             "và gọi DnsFlushResolverCache() để xóa bộ nhớ đệm DNS của Windows. Khi trình duyệt truy cập một tên miền bị chặn (ví dụ blocked.test), "
             "luồng gói tin đi qua các bước sau:",
             styles["Body"],
@@ -187,12 +187,12 @@ def build_pdf() -> Path:
     )
     story.append(
         Preformatted(
-            "1. Browser (Chrome/Edge)  --[DoH tắt qua BrowserPolicyGuard]-->  Windows Stub Resolver (dnscache)\n"
-            "2. Windows Stub Resolver  --[UDP/53 Query: blocked.test A]-->  OGK DnsProxyServer (127.0.0.1:53)\n"
-            "3. DnsProxyServer         --[evaluate('blocked.test')]-------->  DomainPolicyEngine (HashSet + Suffix Trie)\n"
-            "4. DomainPolicyEngine     --[Match: ACTION_BLOCK]------------->  DnsProxyServer\n"
-            "5. DnsProxyServer         --[UDP/53 Resp: NOERROR, A 0.0.0.0]->  Browser (Kết nối thất bại tức thì)\n"
-            "6. DnsProxyServer         --[blocked_domain (eTLD+1)]--------->  EventBuffer & recent_blocks -> Tray UI",
+            "1. Chrome hoặc Edge -> Windows Stub Resolver (dnscache)\n"
+            "2. Stub Resolver -> UDP/53, blocked.test A -> EC DNS Proxy (127.0.0.1:53)\n"
+            "3. EC DNS Proxy -> tra blocked.test -> DomainPolicyEngine và Suffix Trie\n"
+            "4. DomainPolicyEngine -> quy tắc ACTION_BLOCK -> EC DNS Proxy\n"
+            "5. EC DNS Proxy -> UDP/53, NOERROR, A 0.0.0.0 -> trình duyệt\n"
+            "6. EC DNS Proxy -> blocked_domain -> hàng đợi sự kiện và thông báo khay",
             styles["Code"],
         )
     )
@@ -229,10 +229,9 @@ def build_pdf() -> Path:
     )
 
     # ==================== M3 ====================
-    story.append(PageBreak())
     story.append(Paragraph("M3. Phân Tích Đường Vòng (9 Kỹ Thuật Vượt Rào)", styles["H1"]))
     m3_table = [
-        ["Kỹ thuật vượt rào", "Mô tả cơ chế", "Biện pháp đối phó trong OGK", "Trạng thái kiểm thử"],
+        ["Kỹ thuật vượt rào", "Mô tả cơ chế", "Biện pháp đối phó trong EC - Echo Kiddo", "Trạng thái kiểm thử"],
         ["1. Đổi DNS thủ công sang 8.8.8.8", "Trẻ mở Network Connections đổi DNS card mạng khỏi 127.0.0.1.", "NetworkDnsGuard định kỳ kiểm tra phát hiện sai lệch so với 127.0.0.1 và tự động đặt lại + flush DNS cache.", "Cài đặt trong network_guard.py (cần chạy quyền Admin trên máy thật để nghiệm thu)."],
         ["2. DNS-over-HTTPS (DoH)", "Trình duyệt mã hóa truy vấn DNS qua HTTPS port 443.", "DNS Proxy trả NXDOMAIN cho use-application-dns.net và các endpoint DoH phổ biến; BrowserPolicyGuard ghi Registry tắt DoH.", "Đã test đơn vị trong test_dns_proxy.py; cần thử trên Chrome thực tế."],
         ["3. DNS-over-TLS (DoT port 853)", "Ứng dụng kết nối DNS mã hóa qua TCP/853.", "BypassDetector giám sát; có thể bổ sung rule Windows Firewall chặn outbound TCP/853.", "Đã ghi nhận trong phân tích kiến trúc; chưa chặn tự động port 853."],
@@ -240,8 +239,8 @@ def build_pdf() -> Path:
         ["5. Truy cập trực tiếp bằng IP", "Gõ thẳng địa chỉ IP thay vì tên miền để bỏ qua DNS.", "Giới hạn thiết kế của DNS Proxy (chấp nhận rủi ro ở mức cơ bản; kết hợp AppController chặn công cụ quét IP).", "Chấp nhận rủi ro theo phạm vi đồ án."],
         ["6. Khởi động Windows Safe Mode", "Vào Safe Mode không nạp Windows Service bên thứ ba.", "Yêu cầu tài khoản trẻ không thuộc nhóm Administrators (F5); BIOS/BitLocker nằm ngoài phạm vi ứng dụng.", "Chấp nhận rủi ro ở tầng hệ điều hành."],
         ["7. Khởi động từ USB / Live OS", "Boot hệ điều hành khác từ USB để bỏ qua Windows.", "Nằm ngoài phạm vi phần mềm trên Windows; cần khóa thứ tự boot trong UEFI/BIOS.", "Chấp nhận rủi ro ở tầng phần cứng."],
-        ["8. Tài khoản Windows khác", "Đăng nhập bằng user Windows khác trên cùng máy.", "OGK-Service chạy dưới LocalSystem cho toàn máy; SessionAgentLauncher dùng WTSEnumerateSessions gắn Tray UI vào phiên đang hoạt động.", "Đã cài đặt trong session_launcher.py."],
-        ["9. Kết thúc tiến trình (Task Manager)", "Dùng Task Manager / taskkill tắt OGK-Tray hoặc OGK-Service.", "Trẻ dùng Standard User không tắt được Service LocalSystem. Nếu tắt Tray UI, SessionAgentLauncher tự bật lại trong 3 giây; lỗi 3 lần sẽ về UNPROTECTED_HALT.", "Đã kiểm thử guardrail trong test_agent_lifecycle.py."],
+        ["8. Tài khoản Windows khác", "Đăng nhập bằng user Windows khác trên cùng máy.", "EC Service chạy dưới LocalSystem cho toàn máy; SessionAgentLauncher dùng WTSEnumerateSessions gắn Tray UI vào phiên đang hoạt động.", "Đã cài đặt trong session_launcher.py."],
+        ["9. Kết thúc tiến trình (Task Manager)", "Dùng Task Manager / taskkill tắt EC Tray hoặc EC Service.", "Trẻ dùng Standard User không tắt được Service LocalSystem. Nếu tắt Tray UI, SessionAgentLauncher tự bật lại trong 3 giây; lỗi 3 lần sẽ về UNPROTECTED_HALT.", "Đã kiểm thử guardrail trong test_agent_lifecycle.py."],
     ]
     story.append(make_table(m3_table, [3.2 * cm, 4.2 * cm, 5.8 * cm, 4.1 * cm], styles))
 
@@ -258,7 +257,7 @@ def build_pdf() -> Path:
     story.append(Paragraph(m4["meta"], styles["Body"]))
     for title, rows in m4["tables"]:
         story.append(Paragraph(title, styles["Body"]))
-        story.append(make_table(rows, [5.4 * cm, 1.6 * cm, 1.6 * cm, 1.6 * cm, 1.6 * cm, 1.6 * cm, 2.4 * cm, 1.6 * cm], styles))
+        story.append(make_table(rows, [5.0 * cm, 1.6 * cm, 1.6 * cm, 1.8 * cm, 1.6 * cm, 1.8 * cm, 2.4 * cm, 1.6 * cm], styles))
     story.append(
         Paragraph(
             "Ghi chú: bảng được đọc trực tiếp từ docs/benchmark_m4_results.md do tests/benchmark_m4.py sinh ra. "
@@ -272,8 +271,8 @@ def build_pdf() -> Path:
     m5_table = [
         ["Kịch bản sự cố", "Hành vi mong đợi & cài đặt thực tế", "Thời gian phục hồi"],
         ["1. Mất mạng LAN / Internet", "Agent chuyển chế độ ngoại tuyến, tiếp tục áp dụng chính sách từ agent.db, đếm giờ bằng monotonic clock và đệm sự kiện vào event_queue với idempotency_key.", "Tức thì (0s); đồng bộ lô ngay khi có mạng."],
-        ["2. Máy chủ OGK-Server ngừng hoạt động", "Agent tiếp tục bảo vệ cục bộ; nếu mất kết nối quá N = 7 ngày, áp dụng Graded Fail-Open (ADR-01): mở giới hạn giờ học tập nhưng giữ lọc DNS độc hại.", "Tự động đồng bộ lại ở nhịp tim 60s tiếp theo khi server bật lại."],
-        ["3. OGK-Agent / OGK-Tray bị kết thúc", "OGK-Service được Windows SCM phục hồi tự động; nếu OGK-Tray bị tắt, SessionAgentLauncher khởi chạy lại; thất bại 3 lần chuyển UNPROTECTED_HALT và nhả DNS.", "<= 3 giây đối với Tray UI."],
+        ["2. Máy chủ EC Server ngừng hoạt động", "Agent tiếp tục bảo vệ cục bộ; nếu mất kết nối quá N = 7 ngày, áp dụng Graded Fail-Open (ADR-01): mở giới hạn giờ học tập nhưng giữ lọc DNS độc hại.", "Tự động đồng bộ lại ở nhịp tim 60s tiếp theo khi server bật lại."],
+        ["3. EC Agent / EC Tray bị kết thúc", "EC Service được Windows SCM phục hồi tự động; nếu EC Tray bị tắt, SessionAgentLauncher khởi chạy lại; thất bại 3 lần chuyển UNPROTECTED_HALT và nhả DNS.", "<= 3 giây đối với Tray UI."],
     ]
     story.append(make_table(m5_table, [4.2 * cm, 9.1 * cm, 4.0 * cm], styles))
 

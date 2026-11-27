@@ -1,9 +1,9 @@
-# Báo cáo đo hiệu năng M4 (OGK)
+# Báo cáo đo hiệu năng M4 (EC - Echo Kiddo)
 
 - Thời gian đo: 2026-11-19 07:13:39 UTC
 - Máy đo: win32, Python 3.13.16, 12 luồng CPU
 - Số mẫu: 30 mẫu liên tục cho mỗi dòng; p50/p95 tính theo nearest-rank. Đơn vị độ trễ: ms.
-- Chế độ đo DNS: mạng thật. Không Agent: UDP tới 1.1.1.1:53. Có Agent: UDP tới OGK DNS Proxy 127.0.0.1:53545, proxy chuyển tiếp tới 1.1.1.1.
+- Chế độ đo DNS: mạng thật. Không Agent: UDP tới 1.1.1.1:53. Có Agent: UDP tới EC - Echo Kiddo DNS Proxy 127.0.0.1:53545, proxy chuyển tiếp tới 1.1.1.1.
 - Tái lập: `python tests/benchmark_m4.py` (đặt `OGK_BENCH_OFFLINE=1` để chạy khi không có mạng).
 
 ## 1. CPU và RAM
@@ -33,7 +33,7 @@ Agent cộng thêm khi cache miss: p50 +0.654 ms, p95 +68.967 ms (có Agent tr�
 
 ## 3. Độ trễ áp dụng chính sách và lệnh khẩn
 
-Đầu-cuối: Dashboard gửi PUT/POST, OGK-Server ký HMAC, đẩy qua WebSocket, Agent xác minh rồi áp dụng. Đo trên một máy (loopback), chưa gồm RTT mạng giữa hai máy.
+Đầu-cuối: Dashboard gửi PUT/POST, EC Server ký HMAC, đẩy qua WebSocket, Agent xác minh rồi áp dụng. Đo trên một máy (loopback), chưa gồm RTT mạng giữa hai máy.
 
 | Tác vụ | Min | Mean | Max | p50 | p95 | Ngưỡng | Kết quả |
 |---|---|---|---|---|---|---|---|

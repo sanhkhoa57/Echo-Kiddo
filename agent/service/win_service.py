@@ -25,6 +25,8 @@ if __package__ in (None, ""):
     # Allow `python agent/service/win_service.py ...` from any working directory
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from branding import APP_NAME
+
 from agent.core.agent_db import AgentDatabase, DEFAULT_AGENT_DB_PATH
 from agent.core.event_buffer import EventBuffer
 from agent.core.screen_time import ScreenTimeManager, CLOCK_TAMPER_SUBJECT
@@ -455,8 +457,8 @@ class OGKServiceCore:
 if _IS_WINDOWS and "win32serviceutil" in sys.modules:
     class OGKWindowsService(win32serviceutil.ServiceFramework):
         _svc_name_ = "OGKService"
-        _svc_display_name_ = "Open Guardian for Kids Service"
-        _svc_description_ = "Open Guardian for Kids Platform Service (Background Monitoring & Policy Engine)"
+        _svc_display_name_ = f"{APP_NAME} Service"
+        _svc_description_ = f"{APP_NAME} Service (Screen Time & Policy Engine)"
 
         def __init__(self, args):
             win32serviceutil.ServiceFramework.__init__(self, args)
@@ -581,7 +583,7 @@ def run_enroll_cli(
 def _build_enroll_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="win_service.py enroll",
-        description="Pair this device with OGK-Server using the 8-character pairing code.",
+        description=f"Pair this device with {APP_NAME} using the 8-character pairing code.",
     )
     parser.add_argument("--code", required=True, help="8-character pairing code (valid for 10 minutes)")
     parser.add_argument("--server", default=None, help=f"Server URL (default: {DEFAULT_ENROLL_SERVER_URL})")

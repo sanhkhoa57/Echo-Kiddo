@@ -2,7 +2,7 @@
 Measures:
 1. CPU % and RAM RSS (MB) at idle and under load
 2. DNS resolution latency p50/p95: without Agent (direct to resolver) vs with Agent
-   (OGK DNS Proxy: cache miss, cache hit, sinkhole), over real UDP when the network is up
+   (EC - Echo Kiddo DNS Proxy: cache miss, cache hit, sinkhole), over real UDP when the network is up
 3. End-to-end policy apply and urgent-command latency (Dashboard -> Server -> WS -> Agent)
 Writes docs/benchmark_m4_results.md.
 """
@@ -135,7 +135,7 @@ async def benchmark_dns_latencies(samples_count: int = 30, allow_network: bool =
 
     Network mode (default when the upstream answers): real UDP packets.
       - Without Agent: client -> upstream resolver directly.
-      - With Agent: client -> OGK DNS Proxy on 127.0.0.1 -> same upstream. The proxy cache is
+      - With Agent: client -> EC - Echo Kiddo DNS Proxy on 127.0.0.1 -> same upstream. The proxy cache is
         cleared before every cache-miss sample; without/with samples are interleaved on the
         same domain so both arms see the same upstream state.
     Offline mode (no network, or OGK_BENCH_OFFLINE=1): in-process pipeline with a mock
@@ -208,7 +208,7 @@ async def benchmark_dns_latencies(samples_count: int = 30, allow_network: bool =
 
     b, m = calculate_stats(baseline), calculate_stats(miss)
     if real:
-        mode = (f"mạng thật. Không Agent: UDP tới {BENCH_UPSTREAM}:53. Có Agent: UDP tới OGK DNS Proxy "
+        mode = (f"mạng thật. Không Agent: UDP tới {BENCH_UPSTREAM}:53. Có Agent: UDP tới EC - Echo Kiddo DNS Proxy "
                 f"127.0.0.1:{PROXY_PORT}, proxy chuyển tiếp tới {BENCH_UPSTREAM}.")
     else:
         mode = "mô phỏng in-process (không có mạng): chỉ đo chi phí xử lý của Agent, không phải so sánh thật."
@@ -392,7 +392,7 @@ def run_all_benchmarks() -> str:
     e2e = benchmark_end_to_end(n)
 
     report = [
-        "# Báo cáo đo hiệu năng M4 (OGK)",
+        "# Báo cáo đo hiệu năng M4 (EC - Echo Kiddo)",
         "",
         f"- Thời gian đo: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}",
         f"- Máy đo: {sys.platform}, Python {sys.version.split()[0]}, {psutil.cpu_count()} luồng CPU",
@@ -432,7 +432,7 @@ def run_all_benchmarks() -> str:
         "",
         "## 3. Độ trễ áp dụng chính sách và lệnh khẩn",
         "",
-        "Đầu-cuối: Dashboard gửi PUT/POST, OGK-Server ký HMAC, đẩy qua WebSocket, Agent xác minh rồi áp dụng. "
+        "Đầu-cuối: Dashboard gửi PUT/POST, EC Server ký HMAC, đẩy qua WebSocket, Agent xác minh rồi áp dụng. "
         "Đo trên một máy (loopback), chưa gồm RTT mạng giữa hai máy.",
         "",
         _head("Tác vụ"),

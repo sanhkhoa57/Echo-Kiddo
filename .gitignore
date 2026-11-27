@@ -23,7 +23,8 @@ DIEN_THONG_TIN.md
 # Tool caches
 .impeccable/hook.cache.json
 
-# OS / editor
+# OS / editor (~$ = Word lock files)
+~$*
 Thumbs.db
 desktop.ini
 .vscode/

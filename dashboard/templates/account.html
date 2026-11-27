@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% set active_nav = 'account' %}
+
+{% block title %}Tài khoản - {{ app_name }}{% endblock %}
+{% block body_class %}guardian-dashboard{% endblock %}
+{% block extra_scripts %}<script defer src="/static/account.js"></script>{% endblock %}
+
+{% block content %}
+<div class="account-settings">
+  <header class="account-heading">
+    <a class="account-back" href="/dashboard"><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg>Về bảng điều khiển</a>
+    <h1>Hồ sơ của tôi</h1>
+  </header>
+  {% if saved %}<p class="notice section-inset" role="status">Đã lưu hồ sơ tài khoản.</p>{% endif %}
+  {% if error %}<p class="notice notice-error section-inset" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/account" enctype="multipart/form-data" id="accountSettings">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="edit_contact" value="true">
+    <div class="account-settings-grid">
+      <section class="account-fields" aria-labelledby="accountInfo">
+        <h2 id="accountInfo">Thông tin tài khoản</h2>
+        <div class="field">
+          <label for="accountName">Tên hiển thị</label>
+          <input class="input" id="accountName" name="display_name" value="{{ display_name }}" autocomplete="name" maxlength="60" required>
+        </div>
+        <div class="field">
+          <label for="accountEmail">Email đăng nhập</label>
+          <input class="input" id="accountEmail" type="email" name="email" value="{{ email }}" data-original="{{ current_user.email }}" autocomplete="email" maxlength="254" required>
+        </div>
+        <div class="field" id="accountPasswordField">
+          <label for="accountPassword">Mật khẩu hiện tại để đổi email</label>
+          <input class="input" id="accountPassword" type="password" name="current_password" autocomplete="current-password">
+        </div>
+        <div class="field">
+          <label for="accountPhone">Số điện thoại <span class="muted">(không bắt buộc)</span></label>
+          <input class="input" id="accountPhone" type="tel" name="phone" value="{{ phone }}" autocomplete="tel" maxlength="32" placeholder="Ví dụ 0912 345 678">
+        </div>
+      </section>
+
+      <section class="account-photo" aria-labelledby="accountPhotoTitle">
+        <h2 id="accountPhotoTitle">Ảnh đại diện</h2>
+        <div class="avatar account-portrait avatar-{{ avatar_color if avatar_color in avatar_colors else 'forest' }}" id="accountPortrait" aria-hidden="true">
+          <span id="accountInitials">{{ current_user.profile.initials if current_user.profile else current_user.email[:2]|upper }}</span>
+          {% if profile_details and profile_details.avatar_key %}<img src="/account/avatar/{{ profile_details.avatar_key }}" alt="">{% endif %}
+        </div>
+        <div class="account-photo-controls">
+          <label class="btn btn-quiet account-upload">
+            <input class="sr-only" type="file" name="avatar" id="accountAvatar" accept="image/jpeg,image/png,image/webp" aria-describedby="avatarHelp">
+            <span>Chọn ảnh</span>
+          </label>
+          <small class="muted" id="avatarHelp">JPG, PNG hoặc WebP, tối đa 3 MB.</small>
+          <span class="small muted account-file-name" id="avatarFileName" aria-live="polite" translate="no"></span>
+          {% if profile_details and profile_details.avatar_key %}
+            <label class="account-remove"><input type="checkbox" name="remove_avatar" value="true" id="removeAvatar"> Xóa ảnh hiện tại</label>
+          {% endif %}
+        </div>
+        <div class="field account-color">
+          <label for="avatarColor">Màu nền chữ cái</label>
+          <select class="select" id="avatarColor" name="avatar_color">
+            {% for color, label in avatar_colors.items() %}
+              <option value="{{ color }}"{% if color == avatar_color %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </section>
+    </div>
+    <footer class="account-save">
+      <button class="btn" type="submit">Lưu hồ sơ</button>
+    </footer>
+  </form>
+</div>
+{% endblock %}

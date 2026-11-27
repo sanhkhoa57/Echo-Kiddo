@@ -1,36 +1,42 @@
 """Shared look for the OGK tray dialogs.
 
-Mirrors the dashboard tokens in dashboard/static/styles.css (mint ground, sage header,
-rounded white card, pill buttons) so the child sees one product, not two.
-Only tkinter + the standard library, so it works on a clean Windows machine.
+Mirrors the parent dashboard in dashboard/static/styles.css (cool grey ground, flat white card
+with a hairline border, ink headings, one blue accent, pill buttons) so the child sees one product,
+not two. Tone colour only marks the status dot, meters and notes, never a whole header band.
+tkinter + Pillow (already required for the tray icon); Pillow draws the anti-aliased pills.
 """
 import tkinter as tk
 from tkinter import font as tkfont
 from typing import Callable, Optional, Tuple
 
+from PIL import Image, ImageDraw, ImageTk
+
 # ---- tokens (same values as the CSS) ----
-GREEN = "#2f7d63"
-GREEN_DEEP = "#1d5a46"
-GREEN_MID = "#3f9475"
-GREEN_SOFT = "#d3ece2"
-GREEN_WASH = "#eaf6f1"
-GROUND = "#e3f1ee"
+ACCENT = "#1d6ae5"
+ACCENT_DEEP = "#1450b8"
+ACCENT_MID = "#4a8af0"
+ACCENT_SOFT = "#dbe7fd"
+ACCENT_WASH = "#eef4ff"
+# The GREEN_* names predate the blue redesign; tray_app.py still uses them for the accent family.
+GREEN, GREEN_DEEP, GREEN_MID, GREEN_SOFT, GREEN_WASH = ACCENT, ACCENT_DEEP, ACCENT_MID, ACCENT_SOFT, ACCENT_WASH
+GROUND = "#fafafb"
 PAPER = "#ffffff"
-INK = "#14211c"
-INK_2 = "#3f514a"
-INK_3 = "#587068"
-RULE = "#d3e0db"
-LOCKED = "#dde8e4"
-RED = "#c8291a"
-RED_DEEP = "#9c1d11"
-RED_SOFT = "#fbe3df"
-AMBER = "#b4690f"          # header tone for warnings (white text passes 4.5:1)
+INK = "#16181d"
+INK_2 = "#464b55"
+INK_3 = "#686e79"
+RULE = "#e7e9ed"
+RULE_STRONG = "#cdd2d9"
+LOCKED = "#f0f1f4"
+RED = "#d92d20"
+RED_DEEP = "#b42318"
+RED_SOFT = "#fdecea"
+AMBER = "#b4690f"          # status dot / button tone for warnings (white text passes 4.5:1)
 AMBER_BAR = "#d98a3d"
 AMBER_SOFT = "#fbead6"
 AMBER_INK = "#8f4f0c"
 GOLD_SOFT = "#fdf1d0"
 
-# tone -> (header colour, soft tint used for callouts)
+# tone -> (status colour, soft tint used for callouts)
 TONES = {
     "ok": (GREEN, GREEN_WASH),
     "warn": (AMBER, AMBER_SOFT),
@@ -56,6 +62,23 @@ def ui_font(root: tk.Misc, size: int, weight: str = "normal") -> Tuple[str, int,
     return (font_family(root), size, weight)
 
 
+def _pill_image(master: tk.Misc, w: int, h: int, fill: str, line: str, surface: str,
+                inset: int = 0, ring: str = "") -> "ImageTk.PhotoImage":
+    """Anti-aliased pill. Tk canvas shapes have jagged, gappy outlines, so draw at 4x and shrink."""
+    k = 4
+    img = Image.new("RGB", (w * k, h * k), surface)
+    draw = ImageDraw.Draw(img)
+
+    def _pill(pad: int, **kw) -> None:
+        box = (pad * k, pad * k, (w - pad) * k - 1, (h - pad) * k - 1)
+        draw.rounded_rectangle(box, radius=(box[3] - box[1]) // 2, **kw)
+
+    _pill(inset, fill=fill, outline=line, width=k)
+    if ring:
+        _pill(inset + 3, outline=ring, width=k)
+    return ImageTk.PhotoImage(img.resize((w, h), Image.LANCZOS), master=master)
+
+
 def _round_rect(canvas: tk.Canvas, x1: float, y1: float, x2: float, y2: float, r: float, **kw) -> int:
     pts = [x1 + r, y1, x2 - r, y1, x2, y1, x2, y1 + r, x2, y2 - r, x2, y2,
            x2 - r, y2, x1 + r, y2, x1, y2, x1, y2 - r, x1, y1 + r, x1, y1]
@@ -69,13 +92,14 @@ class PillButton(tk.Canvas):
         "primary": dict(bg=GREEN, hover=GREEN_DEEP, fg="#ffffff", line=GREEN),
         "warn": dict(bg=AMBER, hover=AMBER_INK, fg="#ffffff", line=AMBER),
         "danger": dict(bg=RED, hover=RED_DEEP, fg="#ffffff", line=RED),
-        "quiet": dict(bg=PAPER, hover=GREEN_WASH, fg=INK, line="#9db3aa"),
+        "quiet": dict(bg=PAPER, hover=GREEN_WASH, fg=INK, line=RULE_STRONG),
     }
 
     def __init__(self, parent: tk.Misc, text: str, command: Callable[[], None],
                  style: str = "primary", size: int = 10, pad_x: int = 18, height: int = 38,
                  surface: str = PAPER):
         self._st = self.STYLES[style]
+        self._surface = surface
         self._cmd = command
         self._text = text
         self._font = ui_font(parent, size, "bold")
@@ -116,14 +140,14 @@ class PillButton(tk.Canvas):
         self.delete("all")
         st = self._st
         fill = st["hover"] if self._hover else st["bg"]
-        inset = 1.5 if self._down else 0.5          # press: shrink a touch (scale 0.97 feel)
-        r = (self._bh - inset * 2) / 2
-        _round_rect(self, inset, inset, self._bw - inset, self._bh - inset, r, fill=fill, outline=st["line"])
+        line = fill if st["bg"] != PAPER else st["line"]
+        ring = ""
         if self._focus:
-            _round_rect(self, inset + 3, inset + 3, self._bw - inset - 3, self._bh - inset - 3,
-                        r - 3, fill="", outline=st["fg"] if st["bg"] != PAPER else GREEN)
+            ring = st["fg"] if st["bg"] != PAPER else GREEN
+        inset = 1 if self._down else 0              # press: shrink a touch (scale 0.97 feel)
+        self._img = _pill_image(self, self._bw, self._bh, fill, line, self._surface, inset, ring)
+        self.create_image(0, 0, image=self._img, anchor="nw")
         self.create_text(self._bw / 2, self._bh / 2, text=self._text, fill=st["fg"], font=self._font)
-
 
 class ProgressBar(tk.Canvas):
     """Thin rounded meter (same look as .meter on the dashboard)."""
@@ -144,7 +168,8 @@ class ProgressBar(tk.Canvas):
 
 def make_window(title: str, heading: str, tone: str = "ok", parent: Optional[tk.Misc] = None,
                 topmost: bool = True, width: int = 460, subtitle: str = "") -> Tuple[tk.Misc, tk.Frame]:
-    """Create a themed window: sage/amber/red header band over a white card on the mint ground.
+    """Create a themed window: one flat white card with a hairline border on the grey ground,
+    like a dashboard card. The heading is ink; a small dot beside it carries the tone.
     Returns (window, body) - pack your content into `body`. Escape closes the window."""
     win = tk.Toplevel(parent) if parent is not None else tk.Tk()
     win.title(title)
@@ -152,25 +177,31 @@ def make_window(title: str, heading: str, tone: str = "ok", parent: Optional[tk.
     win.resizable(False, False)
     if topmost:
         win.attributes("-topmost", True)
-    head_color, _ = TONES.get(tone, TONES["ok"])
+    tone_color, _ = TONES.get(tone, TONES["ok"])
 
-    header = tk.Frame(win, bg=head_color)
-    header.pack(fill="x")
-    tk.Label(header, text=heading, font=ui_font(win, 13, "bold"), fg="#ffffff", bg=head_color,
-             anchor="w", justify="left", wraplength=width - 48).pack(fill="x", padx=24, pady=(16, 2 if subtitle else 16))
+    card = tk.Frame(win, bg=PAPER, highlightbackground=RULE, highlightthickness=1)
+    card.pack(fill="both", expand=True, padx=14, pady=14)
+    inner = tk.Frame(card, bg=PAPER, width=width - 28)
+    inner.pack(fill="both", expand=True, padx=22, pady=20)
+
+    header = tk.Frame(inner, bg=PAPER)
+    header.pack(fill="x", pady=(0, 4 if subtitle else 14))
+    dot = tk.Canvas(header, width=10, height=10, bg=PAPER, highlightthickness=0, bd=0)
+    dot._img = _pill_image(win, 10, 10, tone_color, tone_color, PAPER)
+    dot.create_image(0, 0, image=dot._img, anchor="nw")
+    dot.pack(side="left", anchor="n", pady=(8, 0), padx=(0, 10))
+    tk.Label(header, text=heading, font=ui_font(win, 14, "bold"), fg=INK, bg=PAPER,
+             anchor="w", justify="left", wraplength=width - 92).pack(side="left", fill="x", expand=True)
     if subtitle:
-        tk.Label(header, text=subtitle, font=ui_font(win, 9), fg="#e3f3ec", bg=head_color,
-                 anchor="w", justify="left", wraplength=width - 48).pack(fill="x", padx=24, pady=(0, 14))
+        tk.Label(inner, text=subtitle, font=ui_font(win, 10), fg=INK_3, bg=PAPER,
+                 anchor="w", justify="left", wraplength=width - 72).pack(fill="x", pady=(0, 14))
 
-    outer = tk.Frame(win, bg=GROUND)
-    outer.pack(fill="both", expand=True, padx=16, pady=16)
-    body = tk.Frame(outer, bg=PAPER, highlightbackground=RULE, highlightthickness=1)
+    # Content gets its own frame so callers can pack freely under the header
+    body = tk.Frame(inner, bg=PAPER)
     body.pack(fill="both", expand=True)
-    inner = tk.Frame(body, bg=PAPER, width=width - 32)
-    inner.pack(fill="both", expand=True, padx=20, pady=18)
 
     win.bind("<Escape>", lambda e: win.destroy())
-    return win, inner
+    return win, body
 
 
 def center(win: tk.Misc) -> None:

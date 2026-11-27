@@ -1,4 +1,4 @@
-"""Generator for docs/BaoCao.docx, the main project report for OGK (20-30 pages).
+"""Generator for docs/BaoCao.docx, the main project report for EC - Echo Kiddo (20-30 pages).
 
 Facts come from the code and from generated artefacts, not from memory:
   - M4 numbers are parsed from docs/benchmark_m4_results.md (tests/benchmark_m4.py);
@@ -230,7 +230,7 @@ def build_report() -> Path:
     r.font.color.rgb = GREEN
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = p.add_run('OGK (Open Guardian for Kids)\n"Công cụ đồng hành, không phải phần mềm theo dõi lén"\n\n')
+    r = p.add_run('EC - Echo Kiddo\n"Công cụ đồng hành, không phải phần mềm theo dõi lén"\n\n')
     r.italic = True
     r.font.size = Pt(14)
     add_table(doc, ["Vai trò", "Họ và tên", "MSSV"], [
@@ -252,7 +252,7 @@ def build_report() -> Path:
          "vào giờ ngủ, vô tình vào những trang không phù hợp lứa tuổi. Phần lớn công cụ trên thị trường giải quyết lo lắng này "
          "bằng cách giám sát: chụp màn hình định kỳ, ghi lại phím gõ, đọc lịch sử duyệt web đầy đủ, chạy ẩn để trẻ không biết.")
     para(doc,
-         "Nhóm chọn một hướng khác, đúng với tinh thần đề bài: một công cụ đồng hành. OGK giới hạn thời gian và chặn nội dung "
+         "Nhóm chọn một hướng khác, đúng với tinh thần đề bài: một công cụ đồng hành. EC - Echo Kiddo giới hạn thời gian và chặn nội dung "
          "không phù hợp ở tầng hệ thống và mạng, nhưng không bao giờ chạy ẩn, không đọc nội dung, chỉ ghi đúng bảy trường dữ liệu "
          "và cho trẻ xem chính xác những gì cha mẹ xem. Báo cáo này trình bày kiến trúc, giao thức, cách hiện thực từng chức năng, "
          "kết quả kiểm thử và đo đạc, cùng những giới hạn mà nhóm chấp nhận một cách có chủ đích.")
@@ -267,7 +267,7 @@ def build_report() -> Path:
 
     doc.add_heading("DANH MỤC TỪ VIẾT TẮT", level=1)
     add_table(doc, ["Viết tắt", "Ý nghĩa"], [
-        ["OGK", "Open Guardian for Kids, tên hệ thống"],
+        ["EC", "Echo Kiddo, tên hệ thống"],
         ["DNS", "Domain Name System, hệ thống phân giải tên miền"],
         ["DoH / DoT", "DNS-over-HTTPS / DNS-over-TLS"],
         ["eTLD+1", "Tên miền cấp hai tính theo danh sách hậu tố công khai (vd. school.edu.vn)"],
@@ -318,7 +318,7 @@ def build_report() -> Path:
         "Chặn luôn kèm lời giải thích: khi chặn ứng dụng hay tên miền, khay hệ thống hiện cửa sổ nêu lý do, không chặn im lặng.",
         "Mọi thay đổi trên máy trẻ đều hoàn tác được: DNS card mạng và registry trình duyệt được chụp snapshot và khôi phục sạch khi dừng dịch vụ hoặc gỡ cài đặt.",
     ])
-    add_table(doc, ["Căn cứ pháp lý", "Yêu cầu liên quan", "Cách OGK đáp ứng"], [
+    add_table(doc, ["Căn cứ pháp lý", "Yêu cầu liên quan", "Cách EC - Echo Kiddo đáp ứng"], [
         ["Nghị định 13/2023/NĐ-CP", "Có sự đồng ý của cha mẹ khi xử lý dữ liệu trẻ em; tối thiểu hóa; quyền xóa", "Hộp xác nhận đồng ý bắt buộc trước khi tạo mã ghép đôi, ghi vào audit log; 7 trường; nút xóa toàn bộ dữ liệu; tự xóa sau 90 ngày"],
         ["Luật Trẻ em 2016", "Quyền bí mật đời sống riêng tư của trẻ", "Không chụp màn hình, không keylogger, không đọc DOM/tin nhắn; subject chỉ là tên exe hoặc eTLD+1"],
         ["Yêu cầu chống lạm dụng của đề bài", "Không có chế độ ẩn; không hiện được biểu tượng thì tự dừng", "SessionAgentLauncher thử bật khay 3 lần, thất bại thì Service chuyển UNPROTECTED_HALT: nhả DNS, dừng chặn"],
@@ -327,20 +327,20 @@ def build_report() -> Path:
     doc.add_heading("1.4. Khảo sát các cách tiếp cận hiện có", level=2)
     para(doc,
          "Nhóm khảo sát các nhóm giải pháp thường gặp theo cách chúng vận hành, không đánh giá sản phẩm thương mại cụ thể. "
-         "Mục tiêu là xác định chỗ OGK cần khác biệt.")
+         "Mục tiêu là xác định chỗ EC - Echo Kiddo cần khác biệt.")
     add_table(doc, ["Cách tiếp cận", "Ưu điểm", "Nhược điểm so với yêu cầu đề bài"], [
         ["Sửa tệp hosts bằng tay", "Không cần phần mềm, không tốn tài nguyên", "Không chặn tên miền con theo wildcard, không có thời gian, không báo cáo, trẻ có quyền admin là sửa được"],
         ["Bộ lọc DNS trên router hoặc dịch vụ DNS công cộng có lọc", "Áp dụng cho cả mạng gia đình", "Không phân biệt từng trẻ, không biết ứng dụng nào đang chạy, mang máy ra quán cà phê là mất tác dụng"],
         ["Phần mềm giám sát chạy ẩn", "Thu thập rất nhiều thông tin", "Vi phạm quyền riêng tư, dễ thành stalkerware, đúng loại sản phẩm đề bài cấm"],
         ["Tính năng gia đình của hệ điều hành", "Tích hợp sẵn, ổn định", "Phụ thuộc tài khoản đám mây của nhà cung cấp, khó tùy biến phân loại và khó làm minh bạch cho trẻ theo yêu cầu đồ án"],
-        ["OGK (đồ án này)", "Agent cục bộ + DNS proxy + máy chủ tự host, minh bạch hai chiều", "Không lọc theo đường dẫn URL, chưa có bộ lọc WFP (trình bày ở mục 5.2)"],
+        ["EC - Echo Kiddo (đồ án này)", "Agent cục bộ + DNS proxy + máy chủ tự host, minh bạch hai chiều", "Không lọc theo đường dẫn URL, chưa có bộ lọc WFP (trình bày ở mục 5.2)"],
     ], [1.7, 2.0, 2.8])
 
     doc.add_heading("1.5. Phạm vi và ngăn xếp công nghệ", level=2)
     add_table(doc, ["Thành phần", "Công nghệ", "Vai trò"], [
-        ["OGK-Agent, Service", "Python 3.11+, pywin32, psutil, dnslib, asyncio, SQLite", "Đếm thời gian, kiểm soát tiến trình, DNS proxy 127.0.0.1:53, đồng bộ với máy chủ"],
-        ["OGK-Agent, Tray UI", "pystray, Tkinter, Named Pipe", "Đồng hồ còn lại, cảnh báo 10/5/1 phút, ân hạn 60 giây, xin thêm giờ, giải thích lý do chặn"],
-        ["OGK-Server", "FastAPI, Uvicorn, SQLAlchemy 2.0, SQLite WAL, Argon2id, websockets", "Xác thực, ghép đôi, ký chính sách HMAC, nhận sự kiện, phát lệnh khẩn"],
+        ["EC Agent, Service", "Python 3.11+, pywin32, psutil, dnslib, asyncio, SQLite", "Đếm thời gian, kiểm soát tiến trình, DNS proxy 127.0.0.1:53, đồng bộ với máy chủ"],
+        ["EC Agent, Tray UI", "pystray, Tkinter, Named Pipe", "Đồng hồ còn lại, cảnh báo 10/5/1 phút, ân hạn 60 giây, xin thêm giờ, giải thích lý do chặn"],
+        ["EC Server", "FastAPI, Uvicorn, SQLAlchemy 2.0, SQLite WAL, Argon2id, websockets", "Xác thực, ghép đôi, ký chính sách HMAC, nhận sự kiện, phát lệnh khẩn"],
         ["Web Dashboard", "Jinja2, HTML/CSS/JavaScript thuần, không thư viện ngoài", "Cấu hình từ xa trên máy tính và điện thoại, biểu đồ, duyệt yêu cầu"],
         ["Kiểm thử", "pytest, pytest-asyncio, httpx ASGITransport, TestClient", f"{n_tests} ca kiểm thử tự động (unit + tích hợp đầu-cuối)"],
     ], [1.6, 2.4, 2.5])
@@ -379,12 +379,12 @@ def build_report() -> Path:
 
     doc.add_heading("2.1. Sơ đồ tổng thể", level=2)
     para(doc,
-         "OGK theo mô hình client-server. Trên máy trẻ chạy OGK-Agent; máy chủ OGK-Server đặt trong mạng LAN hoặc một VPS phòng lab. "
-         "Phụ huynh dùng trình duyệt (máy tính hoặc điện thoại) truy cập dashboard do chính OGK-Server phục vụ.")
+         "EC - Echo Kiddo theo mô hình client-server. Trên máy trẻ chạy EC Agent; máy chủ EC Server đặt trong mạng LAN hoặc một VPS phòng lab. "
+         "Phụ huynh dùng trình duyệt (máy tính hoặc điện thoại) truy cập dashboard do chính EC Server phục vụ.")
     add_code_block(doc,
         "MÁY CỦA TRẺ (Windows 10/11)                           MÁY CHỦ (LAN / VPS lab)\n"
         "+--------------------------------------+   HTTPS     +--------------------------------+\n"
-        "| OGK-Service (Session 0, LocalSystem) |  TLS 1.2+   | OGK-Server (FastAPI + Uvicorn) |\n"
+        "| EC Service (Session 0, LocalSystem) |  TLS 1.2+   | EC Server (FastAPI + Uvicorn) |\n"
         "|  ScreenTimeManager (monotonic)       |<----------->|  /auth /enroll /policy         |\n"
         "|  AppController (SHA-256 + PE header) | heartbeat   |  /events /commands /heartbeat  |\n"
         "|  DnsProxyServer 127.0.0.1:53 UDP/TCP |   60 s      |  /reports /audit /ws/agent     |\n"
@@ -394,16 +394,16 @@ def build_report() -> Path:
         "+------------------^-------------------+             +---------------^----------------+\n"
         "                   | Named Pipe \\\\.\\pipe\\OGKServicePipe                | HTTPS\n"
         "+------------------v-------------------+             +---------------+----------------+\n"
-        "| OGK-Tray (phiên người dùng)          |             | Web Dashboard (Jinja2 + JS)    |\n"
+        "| EC Tray (phiên người dùng)          |             | Web Dashboard (Jinja2 + JS)    |\n"
         "|  đồng hồ, cảnh báo, xin thêm giờ,    |             |  phụ huynh / màn hình của trẻ  |\n"
         "|  cửa sổ giải thích lý do chặn        |             |  / nhật ký kiểm toán           |\n"
         "+--------------------------------------+             +--------------------------------+")
-    add_caption(doc, "Hình 2.1. Kiến trúc tổng thể của OGK")
+    add_caption(doc, "Hình 2.1. Kiến trúc tổng thể của EC - Echo Kiddo")
 
     doc.add_heading("2.2. Tách hai tiến trình trên máy trẻ", level=2)
     para(doc,
          "Windows cô lập dịch vụ trong Session 0 (Session 0 Isolation): một dịch vụ chạy LocalSystem không thể vẽ cửa sổ lên màn hình "
-         "của người dùng. Vì vậy agent tách thành hai tiến trình. OGK-Service giữ toàn bộ quyền và logic thực thi; OGK-Tray chạy "
+         "của người dùng. Vì vậy agent tách thành hai tiến trình. EC Service giữ toàn bộ quyền và logic thực thi; EC Tray chạy "
          "với quyền của trẻ, chỉ hiển thị và gửi yêu cầu. Service dùng WTSEnumerateSessions để tìm phiên đang hoạt động, lấy token "
          "người dùng và gọi CreateProcessAsUser để bật Tray trong đúng phiên đó (agent/service/session_launcher.py).")
     para(doc,
@@ -442,7 +442,7 @@ def build_report() -> Path:
         ["cached_policy", "Bản chính sách đã ký gần nhất, được xác minh lại HMAC mỗi lần khởi động để chạy ngoại tuyến"],
         ["event_queue", "Hàng đợi sự kiện chờ đồng bộ, mỗi sự kiện có idempotency_key (UUID)"],
         ["daily_usage_state", "Số giây đã dùng trong ngày, last_wall_clock_utc, mốc monotonic để phát hiện chỉnh giờ"],
-        ["system_snapshots", "Cấu hình DNS card mạng và registry trình duyệt trước khi OGK sửa, để khôi phục sạch"],
+        ["system_snapshots", "Cấu hình DNS card mạng và registry trình duyệt trước khi EC - Echo Kiddo sửa, để khôi phục sạch"],
         ["device_credentials", "device_id, child_id, token truy cập và làm mới, khóa HMAC chính sách (ba trường bí mật mã hóa AES-256-GCM)"],
     ], [1.6, 4.9])
 
@@ -474,7 +474,7 @@ def build_report() -> Path:
 
     doc.add_heading("3.1. Ghép đôi (enrollment)", level=2)
     add_code_block(doc,
-        "Phụ huynh (Dashboard)          OGK-Server                       OGK-Agent (máy trẻ)\n"
+        "Phụ huynh (Dashboard)          EC Server                       EC Agent (máy trẻ)\n"
         "  | tick 'Tôi đồng ý...'           |                                  |\n"
         "  | POST /enroll/code ------------>| tạo mã 8 ký tự, hạn 10 phút      |\n"
         "  |   {child_id, consent:true}     | ghi audit CREATE_PAIRING_CODE    |\n"
@@ -626,8 +626,9 @@ def build_report() -> Path:
          "sẽ gửi lệnh ADD_TIME_15M, ghi sự kiện override_granted gắn với yêu cầu và ghi audit log. Có nút xuất CSV và nút xóa toàn bộ "
          "dữ liệu (xóa trên máy chủ và gửi PURGE_DATA xóa bộ đệm của agent). Tác vụ nền trên máy chủ xóa sự kiện cũ hơn 90 ngày.")
     para(doc,
-         "Màn hình \"Hôm nay em đã dùng gì?\" dùng cùng dữ liệu nhưng viết bằng câu ngắn cho học sinh tiểu học: đồng hồ minh họa, số "
-         "giờ đã dùng, dải 48 ô giờ được dùng hôm nay (ô khóa có thêm vân sọc, không chỉ khác màu), ba cam kết \"OGK giữ bí mật cho em\" "
+         "Màn hình \"Hôm nay em đã dùng gì?\" dùng cùng dữ liệu và cùng bố cục với dashboard phụ huynh nhưng viết bằng câu ngắn cho học "
+         "sinh tiểu học: thời gian còn lại hôm nay kèm thanh tiến độ, dải 48 ô giờ được dùng (ô khóa có thêm vân sọc, không chỉ khác màu), "
+         "biểu đồ 7 ngày, ứng dụng và trang web đã dùng, những lần bị chặn, ba cam kết \"Những điều EC - Echo Kiddo không làm\" "
          "và đường dẫn tới nhật ký thay đổi. docs/PRIVACY.md có bảng trường dữ liệu, mục đích, thời hạn, người xem và một phiên bản cho trẻ.")
 
     doc.add_heading("4.4. F4: Quản trị từ xa, toàn vẹn chính sách, kiểm toán", level=2)
@@ -680,7 +681,7 @@ def build_report() -> Path:
     add_numbered(doc, [
         "Trình duyệt cần địa chỉ của www.bad-simulated-site.test và gọi stub resolver của Windows (dịch vụ Dnscache).",
         "Card mạng đã bị NetworkDnsGuard đặt DNS là 127.0.0.1, nên stub resolver gửi gói UDP tới 127.0.0.1:53.",
-        "OGK DNS proxy nhận gói, dnslib giải mã phần Question, chuẩn hóa tên và tra Suffix Trie: khớp quy tắc block của bad-simulated-site.test.",
+        "EC - Echo Kiddo DNS proxy nhận gói, dnslib giải mã phần Question, chuẩn hóa tên và tra Suffix Trie: khớp quy tắc block của bad-simulated-site.test.",
         "Proxy dựng phản hồi cùng Transaction ID, cờ QR=1, RCODE=NOERROR, một bản ghi A 0.0.0.0 TTL ngắn; ghi blocked_domain (subject bad-simulated-site.test) và báo Tray.",
         "Trình duyệt kết nối tới 0.0.0.0, thất bại ngay, không có gói nào ra Internet; Tray hiện cửa sổ giải thích cho trẻ.",
     ])
@@ -700,7 +701,7 @@ def build_report() -> Path:
          "bù cụ thể. Proxy HTTPS bị loại vì buộc phải cài chứng chỉ gốc và đọc nội dung trang.")
 
     doc.add_heading("5.3. M3: Phân tích đường vòng", level=2)
-    add_table(doc, ["Kỹ thuật vượt rào", "Kết quả trên OGK", "Đối phó hoặc lý do chấp nhận"], [
+    add_table(doc, ["Kỹ thuật vượt rào", "Kết quả trên EC - Echo Kiddo", "Đối phó hoặc lý do chấp nhận"], [
         ["Đổi DNS thủ công sang 8.8.8.8", "Standard User không đổi được; admin đổi thì NetworkDnsGuard đặt lại và ghi bypass", "Khóa thiết lập card mạng, giám sát định kỳ"],
         ["DNS-over-HTTPS", "Bị chặn: NXDOMAIN canary và điểm cuối DoH, registry tắt DoH", "Danh sách điểm cuối cần cập nhật; DoH tới IP lạ là rủi ro còn lại"],
         ["DNS-over-TLS (cổng 853)", "Hệ điều hành không dùng DoT mặc định", "Chấp nhận rủi ro; hướng mở rộng: chặn cổng 853 bằng tường lửa"],
@@ -727,8 +728,8 @@ def build_report() -> Path:
     add_table(doc, ["Kịch bản", "Hành vi mong đợi", "Hành vi thực tế", "Phục hồi"], [
         ["Mất mạng LAN/Internet", "Vẫn đếm giờ và chặn theo chính sách đệm, đệm sự kiện", "Đúng như mong đợi; sự kiện nằm trong event_queue", "Đồng bộ theo lô ở nhịp tim đầu tiên sau khi có mạng (≤ 60 s)"],
         ["Máy chủ ngừng hoạt động", "Như mất mạng; WebSocket kết nối lại theo backoff", "Agent tiếp tục thực thi; dashboard không truy cập được", "Kết nối lại trong ≤ 60 s + jitter sau khi máy chủ lên"],
-        ["OGK-Tray bị tắt", "Service bật lại Tray", "Tray xuất hiện lại", "Khoảng 3 giây"],
-        ["OGK-Service bị dừng", "SCM khởi động lại theo Recovery Options", "Trạng thái ngày nạp lại từ agent.db", "Theo cấu hình SCM (vài giây)"],
+        ["EC Tray bị tắt", "Service bật lại Tray", "Tray xuất hiện lại", "Khoảng 3 giây"],
+        ["EC Service bị dừng", "SCM khởi động lại theo Recovery Options", "Trạng thái ngày nạp lại từ agent.db", "Theo cấu hình SCM (vài giây)"],
     ], [1.4, 1.8, 1.8, 1.5])
 
     doc.add_heading("5.6. M6: Đồng bộ thời gian", level=2)
@@ -754,7 +755,7 @@ def build_report() -> Path:
     para(doc,
          "Hai kịch bản bắt buộc của đề bài đều có mặt: \"chính trẻ là người tấn công\" (TM-01 đến TM-04) và \"sản phẩm bị lạm dụng để "
          "theo dõi người lớn\" (TM-05). Với TM-05, biện pháp quan trọng nhất nằm ở thiết kế: hệ thống không có khả năng thu thập nội dung, "
-         "nên kẻ lạm dụng cũng không có gì để lấy ngoài tên ứng dụng và tên miền, và người dùng máy luôn thấy biểu tượng OGK.")
+         "nên kẻ lạm dụng cũng không có gì để lấy ngoài tên ứng dụng và tên miền, và người dùng máy luôn thấy biểu tượng EC - Echo Kiddo.")
 
     doc.add_heading("6.2. Ghim chứng chỉ (certificate pinning)", level=2)
     para(doc,
@@ -833,7 +834,7 @@ def build_report() -> Path:
         "Cài Python 3.11+ x64. Mở PowerShell với quyền Administrator tại thư mục dự án.",
         "python -m venv .venv; .\\.venv\\Scripts\\Activate.ps1; pip install -r server/requirements.txt -r agent/requirements.txt (khoảng 3 phút).",
         ".\\scripts\\run_dev.ps1 setup: sinh chứng chỉ TLS tự ký, in dấu vân tay để ghim, nạp dữ liệu mẫu (demo/seed_demo.py).",
-        ".\\scripts\\run_dev.ps1 server: chạy OGK-Server qua HTTPS trên cổng 8000.",
+        ".\\scripts\\run_dev.ps1 server: chạy EC Server qua HTTPS trên cổng 8000.",
         "Mở https://<IP máy chủ>:8000/login trên máy tính hoặc điện thoại, đăng nhập parent@ogk.local / AdminPassword123!.",
         "Trên máy trẻ: tạo mã ghép đôi ở tab Thiết bị, chạy python agent/service/win_service.py enroll --code <MÃ> --server https://<IP>:8000, rồi win_service.py run.",
         "Gỡ sạch: python agent/cleanup/ogk_cleanup.py --pin <PIN> trả DNS và registry về trạng thái ban đầu.",
@@ -902,9 +903,9 @@ def build_report() -> Path:
          "Theo mục 8 của đề bài, nhóm tự điền họ tên, MSSV và tỷ lệ phần trăm đóng góp (tổng 100%) trước khi nộp. Cột nhiệm vụ dưới đây "
          "là phân chia theo phân hệ; nhóm sửa lại cho đúng thực tế.")
     add_table(doc, ["Thành viên", "MSSV", "Nhiệm vụ phụ trách chính", "Đóng góp (%)"], [
-        ["[ĐIỀN HỌ TÊN 1]", "[ĐIỀN MSSV 1]", "OGK-Agent: Service, ScreenTime, AppController, IPC Named Pipe, Tray UI", "[ĐIỀN %]"],
+        ["[ĐIỀN HỌ TÊN 1]", "[ĐIỀN MSSV 1]", "EC Agent: Service, ScreenTime, AppController, IPC Named Pipe, Tray UI", "[ĐIỀN %]"],
         ["[ĐIỀN HỌ TÊN 2]", "[ĐIỀN MSSV 2]", "DNS proxy, Suffix Trie, SafeSearch, NetworkGuard, BrowserPolicy, phụ lục M1-M6, đo hiệu năng", "[ĐIỀN %]"],
-        ["[ĐIỀN HỌ TÊN 3]", "[ĐIỀN MSSV 3]", "OGK-Server (FastAPI, SQLite WAL, Argon2id, HMAC, WebSocket), Web Dashboard, báo cáo", "[ĐIỀN %]"],
+        ["[ĐIỀN HỌ TÊN 3]", "[ĐIỀN MSSV 3]", "EC Server (FastAPI, SQLite WAL, Argon2id, HMAC, WebSocket), Web Dashboard, báo cáo", "[ĐIỀN %]"],
     ], [1.6, 1.0, 3.0, 0.9])
     para(doc, "Tự đánh giá mức độ hoàn thành theo từng hạng mục (nhóm điều chỉnh nếu cần):")
     add_table(doc, ["Hạng mục", "Mức độ hoàn thành", "Ghi chú"], [
