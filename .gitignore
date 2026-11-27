@@ -17,6 +17,9 @@ server/data/
 *.db-shm
 *.sqlite*
 
+# Personal fill-in sheet (names, student IDs)
+DIEN_THONG_TIN.md
+
 # Tool caches
 .impeccable/hook.cache.json
 

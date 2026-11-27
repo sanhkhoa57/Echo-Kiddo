@@ -2,9 +2,19 @@
 (function () {
   "use strict";
 
-  const boot = JSON.parse(document.getElementById("boot").textContent);
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+
+  const kidSelect = $("#kidSelect");
+  if (kidSelect) {
+    kidSelect.addEventListener("change", () => {
+      window.location.href = "/child-view?child_id=" + encodeURIComponent(kidSelect.value);
+    });
+  }
+
+  const bootElement = $("#boot");
+  if (!bootElement) return;
+  const boot = JSON.parse(bootElement.textContent);
   const DAYS = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "CN"];
   const CATEGORIES = boot.categoryLabels || {};
   const BUDGET_KEYS = ["education", "entertainment", "social", "gaming", "unclassified"];
@@ -70,25 +80,34 @@
   async function withBusy(button, task) {
     button.classList.add("is-busy");
     button.disabled = true;
+    button.setAttribute("aria-busy", "true");
     try { return await task(); }
-    finally { button.classList.remove("is-busy"); button.disabled = false; }
+    finally {
+      button.classList.remove("is-busy");
+      button.removeAttribute("aria-busy");
+      button.disabled = false;
+    }
   }
 
-  function confirmDialog(title, text, okLabel) {
+  function confirmDialog(title, text, okLabel, destructive = false) {
     const dialog = $("#confirmDialog");
     if (!dialog || !dialog.showModal) return Promise.resolve(window.confirm(title + "\n\n" + text));
     $("#confirmTitle").textContent = title;
     $("#confirmText").textContent = text;
-    $("#confirmOk").textContent = okLabel;
+    const ok = $("#confirmOk");
+    const cancel = $("#confirmCancel");
+    ok.textContent = okLabel;
+    ok.classList.toggle("btn-danger", destructive);
     dialog.showModal();
+    cancel.focus();
     return new Promise((resolve) => {
       const done = (value) => {
         dialog.close();
-        $("#confirmOk").onclick = $("#confirmCancel").onclick = dialog.oncancel = null;
+        ok.onclick = cancel.onclick = dialog.oncancel = null;
         resolve(value);
       };
-      $("#confirmOk").onclick = () => done(true);
-      $("#confirmCancel").onclick = () => done(false);
+      ok.onclick = () => done(true);
+      cancel.onclick = () => done(false);
       dialog.oncancel = (e) => { e.preventDefault(); done(false); };
     });
   }
@@ -130,6 +149,28 @@
 
   /* ---------- Tabs ---------- */
   const tabs = $$(".tab");
+  const savebar = $("#savebar");
+  let pending = false;
+  const placeToasts = () => {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(() => {
+      pending = false;
+      const bar = savebar.getBoundingClientRect();
+      const clearance = bar.height ? Math.max(0, window.innerHeight - bar.top) : 0;
+      $("#toasts").style.setProperty("--savebar-clearance", clearance + "px");
+    });
+  };
+  const observer = new ResizeObserver(placeToasts);
+  observer.observe(savebar);
+  observer.observe(savebar.parentElement);
+  window.addEventListener("scroll", placeToasts, { passive: true });
+  window.addEventListener("resize", placeToasts);
+
+  function setSavebarVisible(visible) {
+    savebar.inert = !visible;
+    savebar.hidden = !visible;
+  }
   function showTab(name, focus) {
     tabs.forEach((tab) => {
       const on = tab.dataset.tab === name;
@@ -138,15 +179,21 @@
       $("#panel-" + tab.dataset.tab).hidden = !on;
       if (on && focus) tab.focus();
     });
-    $("#savebar").hidden = !(name === "schedule" || name === "rules") && !isDirty();
+    setSavebarVisible(name === "schedule" || name === "rules" || isDirty());
     history.replaceState(null, "", "#" + name);
   }
   tabs.forEach((tab, i) => {
     tab.addEventListener("click", () => showTab(tab.dataset.tab));
     tab.addEventListener("keydown", (e) => {
-      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-      const next = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
-      showTab(next.dataset.tab, true);
+      const destinations = {
+        ArrowLeft: (i + tabs.length - 1) % tabs.length,
+        ArrowRight: (i + 1) % tabs.length,
+        Home: 0,
+        End: tabs.length - 1,
+      };
+      if (!Object.hasOwn(destinations, e.key)) return;
+      e.preventDefault();
+      showTab(tabs[destinations[e.key]].dataset.tab, true);
     });
   });
 
@@ -161,14 +208,13 @@
   }
   function refreshSavebar() {
     const dirty = isDirty();
-    const bar = $("#savebar");
-    bar.dataset.dirty = dirty ? "true" : "false";
-    $("#saveBtn").disabled = !dirty;
+    savebar.dataset.dirty = dirty ? "true" : "false";
+    $("#saveBtn").disabled = !dirty || $("#saveBtn").classList.contains("is-busy");
     $("#saveStatus").textContent = dirty
       ? "Có thay đổi chưa lưu."
       : "Quy định đang ở phiên bản " + saved.version + ".";
     const active = (tabs.find((t) => t.getAttribute("aria-selected") === "true") || {}).dataset;
-    bar.hidden = !dirty && !(active && (active.tab === "schedule" || active.tab === "rules"));
+    setSavebarVisible(dirty || Boolean(active && (active.tab === "schedule" || active.tab === "rules")));
   }
   window.addEventListener("beforeunload", (e) => {
     if (isDirty()) { e.preventDefault(); e.returnValue = ""; }
@@ -223,7 +269,7 @@
   function bindPainting(container) {
     container.addEventListener("pointerdown", (e) => {
       const button = e.target.closest(".slot");
-      if (!button) return;
+      if (!button || e.button !== 0 || !e.isPrimary) return;
       painting = slots[Number(button.dataset.idx)] === "1" ? "0" : "1";
       setSlot(Number(button.dataset.idx), painting);
       e.preventDefault();
@@ -254,6 +300,7 @@
   }
   window.addEventListener("pointerup", () => { painting = null; });
   window.addEventListener("pointercancel", () => { painting = null; });
+  window.addEventListener("blur", () => { painting = null; });
 
   function buildMatrix() {
     const grid = $("#matrix");
@@ -314,7 +361,7 @@
     BUDGET_KEYS.forEach((key) => {
       const current = Object.prototype.hasOwnProperty.call(draft.category_budgets, key) ? draft.category_budgets[key] : -1;
       const mode = current < 0 ? "unlimited" : current === 0 ? "blocked" : "limited";
-      const select = el("select", { class: "select", "aria-label": "Cách tính cho nhóm " + CATEGORIES[key], style: "width: auto;" });
+      const select = el("select", { class: "select", "aria-label": "Cách tính cho nhóm " + CATEGORIES[key] });
       [["unlimited", "Không giới hạn"], ["limited", "Giới hạn phút"], ["blocked", "Chặn hẳn"]].forEach(([value, label]) => {
         select.append(el("option", { value, text: label, selected: value === mode }));
       });
@@ -345,8 +392,9 @@
 
   function actionToggle(rule, name) {
     const group = el("div", { class: "seg", role: "group", "aria-label": "Hành động cho " + name });
+    const groupName = "act-" + name + "-" + Math.random().toString(36).slice(2);
     [["allow", "Cho phép"], ["block", "Chặn"]].forEach(([value, label]) => {
-      const input = el("input", { type: "radio", name: "act-" + name + "-" + Math.random().toString(36).slice(2), value, checked: rule.action === value });
+      const input = el("input", { type: "radio", name: groupName, value, checked: rule.action === value });
       input.addEventListener("change", () => { rule.action = value; refreshSavebar(); });
       group.append(el("label", {}, [input, el("span", { text: label })]));
     });
@@ -433,22 +481,23 @@
       return;
     }
     draft.schedule_matrix_7x48 = slots.join("");
-    const payload = {
+    const payload = JSON.parse(JSON.stringify({
       daily_limit_weekday_min: draft.daily_limit_weekday_min,
       daily_limit_weekend_min: draft.daily_limit_weekend_min,
       schedule_matrix_7x48: draft.schedule_matrix_7x48,
       category_budgets: draft.category_budgets,
       app_rules: draft.app_rules,
       domain_rules: draft.domain_rules,
-    };
+    }));
     try {
       const result = await withBusy($("#saveBtn"), () => api("PUT", "/api/v1/policy/" + CHILD, payload));
-      Object.assign(saved, JSON.parse(JSON.stringify(draft)), { version: result.version });
+      Object.assign(saved, payload, { version: result.version });
       draft.version = result.version;
-      refreshSavebar();
       toast("Đã lưu phiên bản " + result.version + ". Máy của con nhận trong vòng 60 giây.");
     } catch (err) {
       toast(err.message, "error");
+    } finally {
+      refreshSavebar();
     }
   });
   $("#discardBtn").addEventListener("click", () => {
@@ -551,7 +600,7 @@
 
   /* ---------- Devices and data ---------- */
   $$("[data-revoke]").forEach((button) => button.addEventListener("click", async () => {
-    const ok = await confirmDialog("Gỡ thiết bị " + button.dataset.name + "?", "Thiết bị này sẽ không nhận quy định và không gửi dữ liệu nữa. Muốn dùng lại phải ghép đôi bằng mã mới.", "Gỡ thiết bị");
+    const ok = await confirmDialog("Gỡ thiết bị " + button.dataset.name + "?", "Thiết bị này sẽ không nhận quy định và không gửi dữ liệu nữa. Muốn dùng lại phải ghép đôi bằng mã mới.", "Gỡ thiết bị", true);
     if (!ok) return;
     try {
       await withBusy(button, () => api("POST", `/api/v1/devices/${button.dataset.revoke}/revoke`));
@@ -559,7 +608,7 @@
     } catch (err) { toast(err.message, "error"); }
   }));
   $("#purgeBtn").addEventListener("click", async () => {
-    const ok = await confirmDialog("Xóa toàn bộ dữ liệu hoạt động của " + boot.childName + "?", "Mọi sự kiện đã ghi trên máy chủ và trong bộ đệm trên máy của con sẽ bị xóa. Không khôi phục được.", "Xóa dữ liệu");
+    const ok = await confirmDialog("Xóa toàn bộ dữ liệu hoạt động của " + boot.childName + "?", "Mọi sự kiện đã ghi trên máy chủ và trong bộ đệm trên máy của con sẽ bị xóa. Không khôi phục được.", "Xóa dữ liệu", true);
     if (!ok) return;
     try {
       const data = await withBusy($("#purgeBtn"), () => api("DELETE", `/api/v1/privacy/children/${CHILD}/events`));

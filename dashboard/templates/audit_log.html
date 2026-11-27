@@ -6,7 +6,7 @@
 <div class="page-head">
   <div>
     <h1 class="page-title">Nhật Ký Kiểm Toán Công Khai</h1>
-    <p class="lede" style="margin-top: 0.35rem;">
+    <p class="lede intro-copy">
       Mỗi lần bố mẹ đổi quy định hoặc gửi lệnh tới máy đều được ghi lại ở đây: ai làm, lúc nào, từ địa chỉ IP nào, giá trị cũ và mới. Cả bố mẹ và con đều xem được.
     </p>
   </div>
@@ -16,7 +16,7 @@
   <div class="empty">
     <strong>Cần đăng nhập để xem nhật ký của gia đình mình.</strong>
     Nhật ký chỉ hiện các thay đổi liên quan tới con của tài khoản đang đăng nhập.
-    <div style="margin-top: 0.75rem;"><a class="btn btn-sm" href="/login">Đăng nhập</a></div>
+    <div class="follow-up-action"><a class="btn btn-sm" href="/login">Đăng nhập</a></div>
   </div>
 {% elif not entries %}
   <div class="empty">
@@ -24,27 +24,27 @@
     Khi bố mẹ sửa giờ dùng máy, khóa máy hay ghép thiết bị mới, dòng tương ứng sẽ xuất hiện tại đây.
   </div>
 {% else %}
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th scope="col">Thời gian</th>
-          <th scope="col">Ai làm</th>
-          <th scope="col">Việc đã làm</th>
-          <th scope="col">Trước</th>
-          <th scope="col">Sau</th>
-          <th scope="col">Địa chỉ IP</th>
+  <div class="table-wrap audit-table">
+    <table role="table">
+      <thead role="rowgroup">
+        <tr role="row">
+          <th role="columnheader" scope="col">Thời gian</th>
+          <th role="columnheader" scope="col">Ai làm</th>
+          <th role="columnheader" scope="col">Việc đã làm</th>
+          <th role="columnheader" scope="col">Trước</th>
+          <th role="columnheader" scope="col">Sau</th>
+          <th role="columnheader" scope="col">Địa chỉ IP</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody role="rowgroup">
         {% for e in entries %}
-          <tr>
-            <td class="num" style="white-space: nowrap;">{{ e.when }}</td>
-            <td style="min-width: 7rem;">{{ e.who }}{% if e.child %}<div class="small muted">về {{ e.child }}</div>{% endif %}</td>
-            <td><strong>{{ e.action }}</strong></td>
-            <td class="small muted" style="overflow-wrap: anywhere; min-width: 9rem;">{{ e.old or '—' }}</td>
-            <td class="small" style="overflow-wrap: anywhere; min-width: 9rem;">{{ e.new or '—' }}</td>
-            <td class="mono">{{ e.ip }}</td>
+          <tr role="row">
+            <td role="cell" class="num nowrap"><span class="audit-label" aria-hidden="true">Thời gian</span><div>{{ e.when }}</div></td>
+            <td role="cell" class="audit-actor"><span class="audit-label" aria-hidden="true">Ai làm</span><div>{{ e.who }}{% if e.child %}<div class="small muted">về {{ e.child }}</div>{% endif %}</div></td>
+            <td role="cell"><span class="audit-label" aria-hidden="true">Việc đã làm</span><div><strong>{{ e.action }}</strong></div></td>
+            <td role="cell" class="small muted audit-value"><span class="audit-label" aria-hidden="true">Trước</span><div>{{ e.old or '—' }}</div></td>
+            <td role="cell" class="small audit-value"><span class="audit-label" aria-hidden="true">Sau</span><div>{{ e.new or '—' }}</div></td>
+            <td role="cell" class="mono"><span class="audit-label" aria-hidden="true">Địa chỉ IP</span><div>{{ e.ip }}</div></td>
           </tr>
         {% endfor %}
       </tbody>

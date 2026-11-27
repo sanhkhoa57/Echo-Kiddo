@@ -5,21 +5,16 @@
 
 {% block content %}
 <div class="auth">
-  <div>
+  <div class="auth-intro">
     <h1 class="auth-title">Đăng Nhập Phụ Huynh</h1>
-    <p class="lede" style="margin-top: 0.75rem;">
-      Đặt giờ dùng máy, lịch tuần và danh sách ứng dụng cho con. Con luôn xem được mọi thứ bố mẹ xem.
+    <p class="lede">
+      Đặt giờ dùng máy, lịch tuần và quy tắc cho ứng dụng của con. Con luôn xem được mọi thứ bố mẹ xem.
     </p>
-    <ul class="auth-points list" style="gap: 0.9rem;">
-      <li style="border: 0; padding: 0; justify-content: flex-start;"><svg class="icon" aria-hidden="true"><use href="#i-camera-off"/></svg><span>Không chụp màn hình, không ghi bàn phím, không đọc tin nhắn.</span></li>
-      <li style="border: 0; padding: 0; justify-content: flex-start;"><svg class="icon" aria-hidden="true"><use href="#i-eye-off"/></svg><span>Chỉ ghi tên ứng dụng và tên miền, không ghi địa chỉ trang đầy đủ.</span></li>
-      <li style="border: 0; padding: 0; justify-content: flex-start;"><svg class="icon" aria-hidden="true"><use href="#i-list"/></svg><span>Mọi thay đổi của bố mẹ đều vào nhật ký mà con đọc được.</span></li>
-    </ul>
   </div>
 
-  <div class="panel">
+  <div class="panel auth-form">
     {% if error %}
-      <div class="notice notice-error" role="alert" style="margin-bottom: 1rem;">
+      <div class="notice notice-error section-inset" role="alert">
         <svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>
         <span>{{ error }}</span>
       </div>
@@ -39,8 +34,13 @@
         <span class="help" id="pwHelp">Sai 5 lần liên tiếp thì tài khoản tạm khóa 15 phút.</span>
       </div>
 
-      <button type="submit" class="btn" style="margin-top: 0.25rem;">Đăng nhập</button>
+      <button type="submit" class="btn">Đăng nhập</button>
     </form>
   </div>
+  <ul class="auth-points list">
+    <li><svg class="icon" aria-hidden="true"><use href="#i-camera-off"/></svg><span>Không chụp màn hình, không ghi bàn phím, không đọc tin nhắn.</span></li>
+    <li><svg class="icon" aria-hidden="true"><use href="#i-eye-off"/></svg><span>Chỉ ghi tên ứng dụng và tên miền, không ghi địa chỉ trang đầy đủ.</span></li>
+    <li><svg class="icon" aria-hidden="true"><use href="#i-list"/></svg><span>Mọi thay đổi của bố mẹ đều vào nhật ký mà con đọc được.</span></li>
+  </ul>
 </div>
 {% endblock %}
